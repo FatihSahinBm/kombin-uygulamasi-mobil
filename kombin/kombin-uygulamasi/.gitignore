@@ -1,0 +1,7 @@
+# Bağımlılıklar ve Geçici Dosyalar
+node_modules/
+.DS_Store
+
+# API Anahtarları (Gizli)
+js/env.js
+.env

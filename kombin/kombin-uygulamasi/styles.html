@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kombin Öneri Sistemi - Stilini Seç</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/gallery.css">
+    <script type="module">
+        import { auth } from './js/auth.js';
+        auth.requireAuth();
+    </script>
+</head>
+<body>
+    <div class="container fade-in" style="padding-top: 3rem;">
+        <div class="glass-panel" style="padding: 2rem 3rem;">
+            <header class="header-center" style="margin-top: 0; margin-bottom: 2rem;">
+                <h1 class="main-title" style="font-size: 2.8rem;">Stil Beklentisi</h1>
+                <p class="subtitle">Sana hitap eden görselleri seç. Ne kadar çok seçersen algoritma seni o kadar iyi anlar.</p>
+            </header>
+
+            <main>
+                <!-- Galerinin dinamik dolacağı alan -->
+                <div id="styleGallery" class="gallery-grid">
+                    <!-- JavaScript tarafından doldurulacak -->
+                </div>
+            </main>
+            
+            <div class="action-area" style="margin-top: 3rem; display: flex; justify-content: space-between;">
+                <button id="btnBack" class="btn btn-secondary" onclick="window.location.href='onboarding.html'">Geri Dön</button>
+                <button id="btnFinish" class="btn btn-primary" disabled>
+                    Kaydı Tamamla
+                    <span style="font-size: 1.2rem;">✨</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modüler JS Yapısı -->
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>

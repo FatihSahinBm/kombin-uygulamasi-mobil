@@ -1,0 +1,30 @@
+{
+  "expo": {
+    "name": "Kombin.AI",
+    "slug": "kombin-uygulamasi",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "backgroundColor": "#0f0c29"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.kombin.ai"
+    },
+    "android": {
+      "package": "com.kombin.ai",
+      "adaptiveIcon": {
+        "backgroundColor": "#0f0c29",
+        "foregroundImage": "./assets/icon.png"
+      }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-image-picker"
+    ]
+  }
+}

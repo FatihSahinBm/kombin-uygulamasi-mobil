@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kombin.AI | Tarzını Yapay Zeka ile Keşfet</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .hero-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            min-height: 80vh;
+            padding: 2rem;
+        }
+
+        .hero-badge {
+            background: rgba(117, 170, 219, 0.1);
+            color: var(--accent-primary);
+            padding: 0.5rem 1.2rem;
+            border-radius: 100px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .hero-title {
+            font-family: var(--font-heading);
+            font-size: 4.5rem;
+            font-weight: 700;
+            line-height: 1.1;
+            margin-bottom: 1.5rem;
+            max-width: 900px;
+            background: linear-gradient(135deg, var(--text-main) 0%, var(--accent-primary) 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero-description {
+            font-size: 1.25rem;
+            color: var(--text-muted);
+            max-width: 600px;
+            margin-bottom: 3rem;
+        }
+
+        .cta-group {
+            display: flex;
+            gap: 1.5rem;
+        }
+
+        .btn {
+            padding: 1rem 2.5rem;
+            border-radius: var(--radius-md);
+            font-family: var(--font-heading);
+            font-weight: 600;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: var(--accent-primary);
+            color: white;
+            border: none;
+            box-shadow: 0 10px 20px -5px rgba(117, 170, 219, 0.4);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 30px -5px rgba(117, 170, 219, 0.5);
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: var(--text-main);
+            border: 2px solid var(--border-color);
+        }
+
+        .btn-outline:hover {
+            background: rgba(226, 232, 240, 0.3);
+            border-color: var(--accent-primary);
+        }
+
+        .hero-visual {
+            margin-top: 4rem;
+            position: relative;
+            width: 100%;
+            max-width: 1000px;
+            height: 400px;
+            background: var(--bg-surface-glass);
+            border-radius: var(--radius-lg);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.1);
+        }
+
+        .visual-placeholder {
+            font-style: italic;
+            color: var(--text-muted);
+            font-size: 1.1rem;
+        }
+
+        @media (max-width: 768px) {
+            .hero-title {
+                font-size: 3rem;
+            }
+
+            .cta-group {
+                flex-direction: column;
+                width: 100%;
+                max-width: 300px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container fade-in">
+        <nav style="display: flex; justify-content: space-between; align-items: center; padding: 1.5rem 0;">
+            <div
+                style="font-family: var(--font-heading); font-size: 1.5rem; font-weight: 700; color: var(--accent-primary);">
+                Kombin.AI</div>
+            <div>
+                <a href="login.html"
+                    style="text-decoration: none; color: var(--text-main); font-weight: 600; margin-right: 2rem;">Giriş
+                    Yap</a>
+                <a href="login.html?tab=register" class="btn btn-primary"
+                    style="padding: 0.6rem 1.5rem; font-size: 0.95rem;">Hemen Katıl</a>
+            </div>
+        </nav>
+
+        <section class="hero-section">
+            <div class="hero-badge">Yapay Zeka Destekli Stil Danışmanı</div>
+            <h1 class="hero-title">Her Günün İçin Mükemmel Kombini Saniyeler İçinde Tasarla.</h1>
+            <p class="hero-description">Gardırobunu dijitalleştir, tarzını yapay zekaya emanet et. Hava durumuna,
+                gideceğin yere ve bütçene en uygun kombinleri senin için hazırlayalım.</p>
+
+            <div class="cta-group">
+                <a href="login.html?tab=register" class="btn btn-primary">Hemen Ücretsiz Başla</a>
+                <a href="#features" class="btn btn-outline">Nasıl Çalışır?</a>
+            </div>
+
+            <div class="hero-visual">
+                <div class="visual-placeholder">Uygulama Önizlemesi Yakında...</div>
+                <!-- Gelecekte buraya bir animasyon veya görsel eklenebilir -->
+            </div>
+        </section>
+    </div>
+    <script type="module" src="js/main.js"></script>
+</body>
+
+</html>

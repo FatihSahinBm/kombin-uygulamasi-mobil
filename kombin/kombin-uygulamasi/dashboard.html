@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kombin.AI | Mükemmel Kombinler</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script type="module">
+        import { auth } from './js/auth.js';
+        auth.requireAuth();
+
+        window.logout = () => auth.logout();
+        
+        // Kullanıcının yetkisi doğrulanıyor...
+    </script>
+</head>
+<body>
+    <!-- Üst Navbar -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="logo">Kombin.AI</div>
+            <ul class="nav-links">
+                <li><a href="dashboard.html" class="active">Ana Sayfa</a></li>
+                <li><a href="wardrobe.html" id="nav-wardrobe">Gardırobum</a></li>
+                <li><a href="outfits.html" id="nav-create-outfit">Kombin Oluştur</a></li>
+                <li><a href="social.html" id="nav-social">Sosyal Akış</a></li>
+                <li><a href="profile.html">Profil</a></li>
+                <li><a href="#" onclick="logout(); return false;" style="color: var(--accent-color);">Çıkış Yap</a></li>
+            </ul>
+            <div class="mobile-menu-btn">☰</div>
+        </div>
+    </nav>
+
+    <main class="main-container">
+        <!-- Karşılama Alanı -->
+        <section class="welcome-section">
+            <h1 id="welcome-message">Hoş geldin, <span id="user-name">Kullanıcı</span> 👋</h1>
+            <p>Bugün senin için mükemmel kombini oluşturalım.</p>
+        </section>
+
+        <!-- İçerik Grid -->
+        <div class="dashboard-grid">
+            <!-- Ana Aksiyon Kartı -->
+            <div class="card main-action-card" onclick="window.location.href='outfits.html'" style="cursor: pointer;" id="create-outfit-trigger">
+                <div class="card-content">
+                    <div class="icon-wrapper">✨</div>
+                    <h2>Kombin Oluştur</h2>
+                    <p>Yapay zeka desteğiyle tarzına, bütçene ve hava durumuna en uygun kombini saniyeler içinde tasarla.</p>
+                    <button class="btn btn-primary">Hemen Başla</button>
+                </div>
+            </div>
+
+            <!-- Gardırop Özeti -->
+            <div class="card side-card wardrobe-card" id="wardrobe-section">
+                <div class="card-header">
+                    <h3>👕 Gardırobum</h3>
+                </div>
+                <div class="card-body">
+                    <div class="stat-container">
+                        <span class="stat-number" id="wardrobe-count">0</span>
+                        <span class="stat-label">Kıyafet</span>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <button class="btn btn-secondary btn-block" onclick="window.location.href='wardrobe.html'">Gardıroba Git</button>
+                </div>
+            </div>
+
+            <!-- Günün Kombini -->
+            <div class="card side-card daily-outfit-card">
+                <div class="card-header" style="flex-direction: column; align-items: flex-start; gap: 0.5rem;">
+                    <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
+                        <h3>🌤️ Günün Kombini</h3>
+                        <span class="weather-badge" id="weather-info">Bekleniyor...</span>
+                    </div>
+                    <input type="text" id="dashboard-city-select" list="dashboard-city-list" class="form-control" placeholder="Şehir yaz..." style="width: 100%; padding: 0.4rem; font-size: 0.85rem; border-color: var(--border-color); background: var(--surface-color);">
+                    <datalist id="dashboard-city-list"></datalist>
+                </div>
+                <div class="card-body daily-outfit-content" style="padding-top: 0.5rem;">
+                    <div class="outfit-placeholder" id="daily-outfit-display">
+                        <div class="spinner"></div>
+                        <p>Öneri hazırlanıyor...</p>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <button class="btn btn-secondary btn-block" id="daily-outfit-btn" disabled>Detayları Gör</button>
+                </div>
+            </div>
+
+            <!-- Sosyal Akış Özeti -->
+            <div class="card full-width social-feed-card" id="social-feed-section">
+                <div class="card-header">
+                    <h3>🔥 Sosyal Akış - İlham Al</h3>
+                    <a href="social.html" class="link-more">Tümünü Gör</a>
+                </div>
+                <div class="feed-grid" id="social-feed-container">
+                    <!-- JS ile doldurulacak -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modüler JS Dosyaları -->
+    <script src="js/config.js" type="module"></script>
+    <script src="js/utils.js" type="module"></script>
+    <script src="js/api.js" type="module"></script>
+    <script src="js/ui.js" type="module"></script>
+    <script src="js/main.js" type="module"></script>
+</body>
+</html>

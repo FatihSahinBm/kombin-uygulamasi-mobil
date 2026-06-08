@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Giriş Yap / Kayıt Ol | Kombin.AI</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .auth-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 2rem;
+            position: relative;
+        }
+
+        .back-btn-top {
+            position: absolute;
+            top: 2rem;
+            left: 2rem;
+            text-decoration: none;
+            color: var(--text-main);
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .back-btn-top:hover {
+            color: var(--accent-primary);
+            transform: translateX(-5px);
+        }
+
+        .auth-card {
+            max-width: 450px;
+            width: 100%;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-main);
+            margin-bottom: 0.5rem;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 0.8rem 1rem;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            background: rgba(255, 255, 255, 0.5);
+            font-family: var(--font-body);
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            background: white;
+            box-shadow: 0 0 0 4px rgba(117, 170, 219, 0.1);
+        }
+
+        .btn-auth {
+            width: 100%;
+            padding: 1rem;
+            border-radius: 12px;
+            border: none;
+            background: var(--accent-primary);
+            color: white;
+            font-family: var(--font-heading);
+            font-weight: 600;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 1rem;
+        }
+
+        .btn-auth:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px -5px rgba(117, 170, 219, 0.4);
+        }
+
+        .auth-footer {
+            margin-top: 2rem;
+            text-align: center;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        .auth-footer a {
+            color: var(--accent-primary);
+            font-weight: 600;
+            text-decoration: none;
+        }
+
+        .social-auth {
+            margin-top: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .btn-social {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.8rem;
+            width: 100%;
+            padding: 0.8rem;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            background: white;
+            color: var(--text-main);
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-social:hover {
+            background: var(--bg-light);
+        }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            text-align: center;
+            margin: 2rem 0;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        .divider::before, .divider::after {
+            content: '';
+            flex: 1;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .divider:not(:empty)::before { margin-right: 1rem; }
+        .divider:not(:empty)::after { margin-left: 1rem; }
+
+        .auth-form {
+            display: none;
+        }
+
+        .auth-form.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="auth-container fade-in">
+        <a href="index.html" class="back-btn-top">
+            <span style="font-size: 1.2rem;">←</span> Geri Dön
+        </a>
+        <div class="glass-panel auth-card">
+            <div style="text-align: center; margin-bottom: 2rem;">
+                <div style="font-family: var(--font-heading); font-size: 1.8rem; font-weight: 700; color: var(--accent-primary); margin-bottom: 0.5rem;">Kombin.AI</div>
+                <p id="auth-subtitle">Tekrar hoş geldin! Hesabına giriş yap.</p>
+            </div>
+
+            <div class="auth-tabs">
+                <button class="auth-tab active" data-target="login-form">Giriş Yap</button>
+                <button class="auth-tab" data-target="register-form">Kayıt Ol</button>
+            </div>
+
+            <!-- Giriş Formu -->
+            <form id="login-form" class="auth-form active">
+                <div class="form-group">
+                    <label for="login-email">E-posta</label>
+                    <input type="email" id="login-email" class="form-input" placeholder="ornek@mail.com" required>
+                </div>
+                <div class="form-group">
+                    <label for="login-password">Şifre</label>
+                    <input type="password" id="login-password" class="form-input" placeholder="••••••••" required>
+                </div>
+                <button type="submit" class="btn-auth">Giriş Yap</button>
+            </form>
+
+            <!-- Kayıt Formu -->
+            <form id="register-form" class="auth-form">
+                <div class="form-group">
+                    <label for="register-name">Ad Soyad</label>
+                    <input type="text" id="register-name" class="form-input" placeholder="Adınız Soyadınız" required>
+                </div>
+                <div class="form-group">
+                    <label for="register-email">E-posta</label>
+                    <input type="email" id="register-email" class="form-input" placeholder="ornek@mail.com" required>
+                </div>
+                <div class="form-group">
+                    <label for="register-password">Şifre</label>
+                    <input type="password" id="register-password" class="form-input" placeholder="En az 8 karakter" required>
+                </div>
+                <button type="submit" class="btn-auth">Hesap Oluştur</button>
+            </form>
+
+            <div class="divider">veya</div>
+
+            <div class="social-auth">
+                <button class="btn-social">
+                    <img src="https://www.google.com/favicon.ico" width="18" alt="Google">
+                    Google ile devam et
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>

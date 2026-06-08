@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kombin.AI | Gardırobum</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script type="module">
+        import { auth } from './js/auth.js';
+        auth.requireAuth();
+        window.logout = () => auth.logout();
+    </script>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="logo">Kombin.AI</div>
+            <ul class="nav-links">
+                <li><a href="dashboard.html">Ana Sayfa</a></li>
+                <li><a href="wardrobe.html" class="active">Gardırobum</a></li>
+                <li><a href="outfits.html">Kombin Oluştur</a></li>
+                <li><a href="social.html">Sosyal Akış</a></li>
+                <li><a href="profile.html">Profil</a></li>
+                <li><a href="#" onclick="logout(); return false;" style="color: var(--accent-color);">Çıkış Yap</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main class="main-container fade-in">
+        <header style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem;">
+            <div>
+                <h1 class="main-title" style="font-size: 2rem;">👕 Gardırobum</h1>
+                <p class="subtitle" style="margin-top: 5px;">Dijital kıyafet dolabını baştan yarat</p>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <select id="wardrobe-filter" class="form-control" style="width: auto; padding: 0.5rem; background: var(--bg-color);">
+                    <option value="all">Tüm Gardırop</option>
+                    <option value="ust">Sadece Üst Giyim</option>
+                    <option value="alt">Sadece Alt Giyim</option>
+                    <option value="dis_giyim">Sadece Dış Giyim</option>
+                    <option value="ayakkabi">Sadece Ayakkabı</option>
+                    <option value="aksesuar">Sadece Aksesuar</option>
+                </select>
+                <button class="btn btn-primary" id="add-wardrobe-btn">+ Yeni Kıyafet Ekle</button>
+            </div>
+        </header>
+
+        <!-- Liste -->
+        <div id="wardrobe-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem; min-height: 40vh;">
+            <div class="spinner" style="margin: 3rem auto; grid-column: 1 / -1;"></div>
+        </div>
+    </main>
+
+    <!-- Çoklu Kıyafet Algılama Modalı -->
+    <div class="modal" id="multi-detect-modal">
+        <div class="modal-content" style="max-width: 560px;">
+            <div class="modal-header">
+                <h2>🔍 Birden Fazla Parça Algılandı!</h2>
+                <button class="close-btn" id="close-multi-modal">&times;</button>
+            </div>
+            <div class="modal-body" style="text-align: center;">
+                <div style="margin-bottom: 1.2rem;">
+                    <img id="multi-detect-preview" src="" alt="Yüklenen Fotoğraf" style="max-width: 100%; max-height: 220px; border-radius: 12px; object-fit: contain; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+                </div>
+                <p style="color: var(--text-muted); margin-bottom: 0.8rem; font-size: 0.9rem;">
+                    Gardırobuna eklemek istediğin parçaları <strong>seç</strong>, ardından analiz butonuna bas.<br>
+                    Yapay Zeka her parçayı fotoğraftan kırparak ayrı ayrı analiz edecek.
+                </p>
+                <div id="multi-detect-buttons" style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 1rem;">
+                    <!-- JS ile seçilebilir kartlar dinamik olarak eklenecek -->
+                </div>
+                <button class="btn btn-primary" id="multi-detect-submit" style="margin-top: 1.2rem; padding: 0.7rem 2rem; font-size: 1rem; width: 100%; display: none;">
+                    🤖 Seçilenleri Analiz Et ve Ekle
+                </button>
+                <p style="color: var(--text-muted); margin-top: 0.8rem; font-size: 0.78rem; opacity: 0.7;">
+                    Birden fazla parça seçebilirsin. Her biri kırpılıp ayrı ayrı analiz edilecek.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Kıyafet Ekle Modal -->
+    <div class="modal" id="add-item-modal">
+        <div class="modal-content" style="max-height: 90vh; overflow-y: auto;">
+            <div class="modal-header">
+                <h2 id="modal-title">Kıyafet Ekle</h2>
+                <button class="close-btn" id="close-item-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="wardrobe-form">
+                    <input type="hidden" id="editItemId" value="">
+                    <div class="form-group">
+                        <label>Parça Türü/Markası (Örn: Siyah Boğazlı Kazak)</label>
+                        <input type="text" id="itemName" required class="form-control" placeholder="Levi's Tişört, Deri Ceket vb.">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Kategori</label>
+                        <select id="itemCategory" class="form-control" required>
+                            <option value="ust">Üst Giyim</option>
+                            <option value="alt">Alt Giyim</option>
+                            <option value="dis_giyim">Dış Giyim</option>
+                            <option value="ayakkabi">Ayakkabı</option>
+                            <option value="aksesuar">Aksesuar</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Hakim Renk</label>
+                        <input type="text" id="itemColor" class="form-control" placeholder="Siyah, Beyaz, Toprak Rengi vs." required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Fotoğraf Yükle (Yapay Zeka Otomatik Analiz Eder) 🤖</label>
+                        <input type="file" id="itemImage" accept="image/*" class="form-control" style="padding: 10px; background: var(--bg-color);">
+                        <small id="ai-status-text" style="color: var(--primary-color); display: none; margin-top: 5px; font-weight: 500;">Model Yükleniyor...</small>
+                    </div>
+
+                    <div id="ai-attributes-container" style="display: none; background: #f8fafc; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; border: 1px solid #e2e8f0;">
+                        <h4 style="margin: 0 0 10px 0; font-size: 0.9rem; color: var(--text-color);">✨ Yapay Zeka Analiz Sonucu</h4>
+                        
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                            <div id="aiFitContainer" style="display: none;">
+                                <label style="font-size: 0.8rem;">Kalıp (Fit)</label>
+                                <input type="text" id="aiFit" class="form-control" style="padding: 0.4rem; font-size: 0.85rem;" placeholder="örn: Regular">
+                            </div>
+                            <div id="aiLegLengthContainer" style="display: none;">
+                                <label style="font-size: 0.8rem;">Paça (Leg Length)</label>
+                                <input type="text" id="aiLegLength" class="form-control" style="padding: 0.4rem; font-size: 0.85rem;" placeholder="örn: Bilek Boy">
+                            </div>
+                            <div id="aiNecklineContainer" style="display: none;">
+                                <label style="font-size: 0.8rem;">Yaka (Neckline)</label>
+                                <input type="text" id="aiNeckline" class="form-control" style="padding: 0.4rem; font-size: 0.85rem;" placeholder="örn: V Yaka">
+                            </div>
+                            <div id="aiSleeveContainer" style="display: none;">
+                                <label style="font-size: 0.8rem;">Kol (Sleeve)</label>
+                                <input type="text" id="aiSleeve" class="form-control" style="padding: 0.4rem; font-size: 0.85rem;" placeholder="örn: Kısa Kol">
+                            </div>
+                            <div id="aiTextureContainer" style="display: none;">
+                                <label style="font-size: 0.8rem;">Doku (Texture)</label>
+                                <input type="text" id="aiTexture" class="form-control" style="padding: 0.4rem; font-size: 0.85rem;" placeholder="örn: Pamuk">
+                            </div>
+                            <div id="aiStyleContainer" style="display: none;">
+                                <label style="font-size: 0.8rem;">Stil (Style)</label>
+                                <input type="text" id="aiStyle" class="form-control" style="padding: 0.4rem; font-size: 0.85rem;" placeholder="örn: Casual">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 10px; margin-top: 1.5rem;">
+                        <button type="button" class="btn" id="reset-form-btn" style="flex: 1; background: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1;">Sıfırla</button>
+                        <button type="submit" class="btn btn-primary" id="save-item-btn" style="flex: 2;">Gardıroba Kaydet</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/config.js" type="module"></script>
+    <script src="js/utils.js" type="module"></script>
+    <script src="js/api.js" type="module"></script>
+    <script src="js/ui.js" type="module"></script>
+    <script src="js/main.js" type="module"></script>
+</body>
+</html>

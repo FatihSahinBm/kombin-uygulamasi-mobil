@@ -1,0 +1,91 @@
+/* Butonlar */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.85rem 2.5rem;
+    font-size: 1.05rem;
+    font-weight: 500;
+    font-family: var(--font-body);
+    border-radius: var(--radius-md);
+    border: none;
+    cursor: pointer;
+    transition: all var(--transition-speed) cubic-bezier(0.16, 1, 0.3, 1);
+    gap: 0.75rem;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
+    color: white;
+    box-shadow: 0 8px 16px -4px rgba(117, 170, 219, 0.4);
+}
+
+.btn-primary:hover:not(:disabled) {
+    transform: translateY(-3px) scale(1.02);
+    box-shadow: 0 12px 20px -4px rgba(117, 170, 219, 0.6);
+}
+
+.btn-secondary {
+    background-color: white;
+    color: var(--text-main);
+    border: 1px solid var(--border-color);
+}
+
+.btn-secondary:hover:not(:disabled) {
+    background-color: var(--bg-light);
+    border-color: var(--text-muted);
+}
+
+.btn-google {
+    background-color: white;
+    color: var(--text-main);
+    width: 100%;
+    margin-bottom: 2rem;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.03);
+    font-weight: 500;
+}
+
+.btn-google:hover {
+    background-color: #FAFAFA;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px -2px rgba(0, 0, 0, 0.05);
+}
+
+.btn-google img {
+    width: 22px;
+    height: 22px;
+}
+
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    background: var(--border-color);
+    box-shadow: none;
+    color: var(--text-muted);
+}
+
+/* Ayırıcı Çizgi */
+.divider {
+    display: flex;
+    align-items: center;
+    text-align: center;
+    margin: 1.5rem 0;
+    color: var(--text-muted);
+    font-size: 0.95rem;
+}
+
+.divider::before,
+.divider::after {
+    content: '';
+    flex: 1;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.divider:not(:empty)::before {
+    margin-right: 1em;
+}
+
+.divider:not(:empty)::after {
+    margin-left: 1em;
+}

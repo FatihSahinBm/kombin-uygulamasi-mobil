@@ -1,0 +1,147 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&family=Inter:wght@300;400;500&display=swap');
+
+:root {
+    /* Fresh, Light & Airy Aesthetic */
+    --bg-light: #F4F7F6;
+    --bg-surface: #FFFFFF;
+    --bg-surface-glass: rgba(255, 255, 255, 0.85);
+    
+    --accent-primary: #75AADB; /* Soft Sky Blue */
+    --accent-secondary: #93C6E7;
+    --accent-tertiary: #A5D3B8; /* Minty Green Hint */
+    
+    --text-main: #2D3748;
+    --text-muted: #718096;
+    --border-color: #E2E8F0;
+    
+    --radius-md: 16px;
+    --radius-lg: 24px;
+    --transition-speed: 0.4s;
+
+    --font-heading: 'Outfit', sans-serif;
+    --font-body: 'Inter', sans-serif;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: var(--font-body);
+    background-color: var(--bg-light);
+    color: var(--text-main);
+    line-height: 1.6;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow-x: hidden;
+    position: relative;
+}
+
+/* Background Ambient Glow (Light mode) */
+body::before {
+    content: '';
+    position: absolute;
+    top: -10%;
+    left: -10%;
+    width: 50%;
+    height: 60%;
+    background: radial-gradient(circle, rgba(117, 170, 219, 0.15) 0%, rgba(244, 247, 246, 0) 70%);
+    z-index: -1;
+    pointer-events: none;
+}
+
+body::after {
+    content: '';
+    position: absolute;
+    bottom: -20%;
+    right: -10%;
+    width: 60%;
+    height: 60%;
+    background: radial-gradient(circle, rgba(165, 211, 184, 0.15) 0%, rgba(244, 247, 246, 0) 70%);
+    z-index: -1;
+    pointer-events: none;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+    width: 100%;
+}
+
+.header-center {
+    text-align: center;
+    margin-bottom: 2.5rem;
+    margin-top: 1rem;
+}
+
+.main-title {
+    font-family: var(--font-heading);
+    font-size: 3rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: var(--text-main);
+    letter-spacing: -0.5px;
+}
+
+.subtitle {
+    font-size: 1.15rem;
+    color: var(--text-muted);
+    font-weight: 400;
+}
+
+/* Utilities */
+.fade-in {
+    animation: fadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(15px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Glassmorphism Panel (Light) */
+.glass-panel {
+    background: var(--bg-surface-glass);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 20px 40px -10px rgba(45, 55, 72, 0.08);
+    padding: 3rem;
+    width: 100%;
+}
+
+/* Auth Tabs */
+.auth-tabs {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    background: rgba(226, 232, 240, 0.5);
+    padding: 0.5rem;
+    border-radius: var(--radius-md);
+}
+
+.auth-tab {
+    flex: 1;
+    padding: 0.8rem 1.5rem;
+    border: none;
+    background: transparent;
+    font-family: var(--font-heading);
+    font-size: 1.1rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.auth-tab.active {
+    background: white;
+    color: var(--accent-primary);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+}
