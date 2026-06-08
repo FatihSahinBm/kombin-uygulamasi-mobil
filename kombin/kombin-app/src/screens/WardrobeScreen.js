@@ -118,23 +118,18 @@ export default function WardrobeScreen() {
         const ext = newImage.uri.split('.').pop();
         const fileName = `${user.id}/${Date.now()}.${ext}`;
         
-        const formData = new FormData();
-        formData.append('file', {
-          uri: newImage.uri,
-          name: fileName.split('/').pop(),
-          type: `image/${ext === 'jpg' ? 'jpeg' : ext}`,
-        });
+        const blob = await uriToBlob(newImage.uri);
         
         let uploadBucket = 'wardrobe_images';
         let { error: uploadError } = await supabase.storage
           .from(uploadBucket)
-          .upload(fileName, formData, { contentType: 'multipart/form-data' });
+          .upload(fileName, blob, { contentType: `image/${ext === 'jpg' ? 'jpeg' : ext}` });
           
         if (uploadError) {
           uploadBucket = 'wardrobe-images';
           const { error: retryError } = await supabase.storage
             .from(uploadBucket)
-            .upload(fileName, formData, { contentType: 'multipart/form-data' });
+            .upload(fileName, blob, { contentType: `image/${ext === 'jpg' ? 'jpeg' : ext}` });
           uploadError = retryError;
         }
 

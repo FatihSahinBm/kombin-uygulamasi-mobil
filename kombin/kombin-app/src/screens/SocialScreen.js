@@ -320,23 +320,18 @@ export default function SocialScreen() {
         const ext = newImage.uri.split('.').pop();
         const fileName = `posts/${user.id}/${Date.now()}.${ext}`;
         
-        const formData = new FormData();
-        formData.append('file', {
-          uri: newImage.uri,
-          name: fileName.split('/').pop(),
-          type: `image/${ext === 'jpg' ? 'jpeg' : ext}`,
-        });
+        const blob = await uriToBlob(newImage.uri);
         
         let uploadBucket = 'social_images';
         let { error: upErr } = await supabase.storage
           .from(uploadBucket)
-          .upload(fileName, formData, { contentType: 'multipart/form-data' });
+          .upload(fileName, blob, { contentType: `image/${ext === 'jpg' ? 'jpeg' : ext}` });
           
         if (upErr) {
           uploadBucket = 'social-images';
           const { error: retryError } = await supabase.storage
             .from(uploadBucket)
-            .upload(fileName, formData, { contentType: 'multipart/form-data' });
+            .upload(fileName, blob, { contentType: `image/${ext === 'jpg' ? 'jpeg' : ext}` });
           upErr = retryError;
         }
 
