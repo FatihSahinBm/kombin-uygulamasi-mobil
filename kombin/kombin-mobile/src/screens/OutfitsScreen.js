@@ -54,11 +54,22 @@ export default function OutfitsScreen({ route }) {
       if (!user) throw new Error('Giriş yapmanız gerekiyor.');
 
       // Gardırop öğelerini çek
-      const { data: wardrobeItems } = await supabase
-        .from('wardrobe_items')
-        .select('name, category, color, brand')
+      const { data: rawItems } = await supabase
+        .from('wardrobe')
+        .select('name, categories(name), colors(name), attributes')
         .eq('user_id', user.id)
         .limit(20);
+
+      const wardrobeItems = (rawItems || []).map(item => ({
+        name: item.name,
+        category: item.categories?.name === 'ust' ? 'Üst Giyim' :
+                  item.categories?.name === 'alt' ? 'Alt Giyim' :
+                  item.categories?.name === 'ayakkabi' ? 'Ayakkabı' :
+                  item.categories?.name === 'dis_giyim' ? 'Dış Giyim' :
+                  item.categories?.name === 'aksesuar' ? 'Aksesuar' : (item.categories?.name || 'Üst Giyim'),
+        color: item.colors?.name || '',
+        brand: item.attributes?.brand || ''
+      }));
 
       const prompt = `Sen bir moda uzmanısın. Aşağıdaki kriterlere göre Türkçe bir kombin önerisi yap:
 
@@ -76,8 +87,9 @@ Lütfen şu formatta yanıt ver:
 🌡️ UYGUN HAVA: [hangi hava koşuluna uygun]`;
 
       // Gemini API çağrısı
+      const geminiApiKey = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
       const response = await fetch(
-        'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=AIzaSyDemo_replace_with_real_key',
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -106,17 +118,21 @@ Lütfen şu formatta yanıt ver:
         outfitText = `🎯 KOMBİN ADI: ${m.name}\n✨ PARÇALAR:\n${m.pieces.join('\n')}\n💡 STİL İPUCU: Kombini tamamlamak için hafif bir parfüm seçmeyi unutma.\n🌡️ UYGUN HAVA: Her mevsim uygundur.`;
       }
 
-      // Kombini kaydet
-      await supabase.from('outfits').insert({
-        user_id: user.id,
-        style,
-        source,
-        color_palette: colorPalette,
-        budget_min: parseInt(budgetMin),
-        budget_max: parseInt(budgetMax),
-        city: city || null,
-        ai_result: outfitText,
-      }).select().single();
+      // Kombini kaydet (İsteğe bağlı, veritabanında outfits tablosu yoksa hatayı yut)
+      try {
+        await supabase.from('outfits').insert({
+          user_id: user.id,
+          style,
+          source,
+          color_palette: colorPalette,
+          budget_min: parseInt(budgetMin),
+          budget_max: parseInt(budgetMax),
+          city: city || null,
+          ai_result: outfitText,
+        });
+      } catch (dbErr) {
+        console.log('Outfits table insert failed/skipped:', dbErr);
+      }
 
       setResult(outfitText);
     } catch (e) {

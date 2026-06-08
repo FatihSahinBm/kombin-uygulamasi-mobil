@@ -19,6 +19,22 @@ import { supabase } from '../lib/supabase';
 
 const CATEGORIES = ['Tümü', 'Üst Giyim', 'Alt Giyim', 'Ayakkabı', 'Dış Giyim', 'Aksesuar'];
 
+const uriToBlob = (uri) => {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.onload = function () {
+      resolve(xhr.response);
+    };
+    xhr.onerror = function (e) {
+      console.log('xhr error:', e);
+      reject(new Error("Görsel okunamadı (Network request failed)"));
+    };
+    xhr.responseType = "blob";
+    xhr.open("GET", uri, true);
+    xhr.send(null);
+  });
+};
+
 export default function WardrobeScreen() {
   const [items, setItems] = useState([]);
   const [filtered, setFiltered] = useState([]);
@@ -36,13 +52,26 @@ export default function WardrobeScreen() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       const { data, error } = await supabase
-        .from('wardrobe_items')
-        .select('*')
+        .from('wardrobe')
+        .select('*, categories(name), colors(name)')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
       if (error) throw error;
-      setItems(data || []);
-      setFiltered(data || []);
+
+      const normalizedData = (data || []).map(item => ({
+        ...item,
+        category: item.categories?.name === 'ust' ? 'Üst Giyim' :
+                  item.categories?.name === 'alt' ? 'Alt Giyim' :
+                  item.categories?.name === 'ayakkabi' ? 'Ayakkabı' :
+                  item.categories?.name === 'dis_giyim' ? 'Dış Giyim' :
+                  item.categories?.name === 'aksesuar' ? 'Aksesuar' : (item.categories?.name || 'Üst Giyim'),
+        color: item.colors?.name || '',
+        brand: item.attributes?.brand || '',
+        size: item.attributes?.size || '',
+      }));
+
+      setItems(normalizedData);
+      setFiltered(normalizedData);
     } catch (e) {
       console.log('Wardrobe load error:', e);
     } finally {
@@ -88,26 +117,77 @@ export default function WardrobeScreen() {
       if (newImage) {
         const ext = newImage.uri.split('.').pop();
         const fileName = `${user.id}/${Date.now()}.${ext}`;
-        const response = await fetch(newImage.uri);
-        const blob = await response.blob();
-        const { error: uploadError } = await supabase.storage
-          .from('wardrobe-images')
-          .upload(fileName, blob, { contentType: `image/${ext}` });
+        
+        const formData = new FormData();
+        formData.append('file', {
+          uri: newImage.uri,
+          name: fileName.split('/').pop(),
+          type: `image/${ext === 'jpg' ? 'jpeg' : ext}`,
+        });
+        
+        let uploadBucket = 'wardrobe_images';
+        let { error: uploadError } = await supabase.storage
+          .from(uploadBucket)
+          .upload(fileName, formData, { contentType: 'multipart/form-data' });
+          
+        if (uploadError) {
+          uploadBucket = 'wardrobe-images';
+          const { error: retryError } = await supabase.storage
+            .from(uploadBucket)
+            .upload(fileName, formData, { contentType: 'multipart/form-data' });
+          uploadError = retryError;
+        }
+
         if (!uploadError) {
-          const { data: urlData } = supabase.storage.from('wardrobe-images').getPublicUrl(fileName);
+          const { data: urlData } = supabase.storage.from(uploadBucket).getPublicUrl(fileName);
           imageUrl = urlData.publicUrl;
         }
       }
 
-      const { error } = await supabase.from('wardrobe_items').insert({
+      // Resolve category_id
+      const catMap = {
+        'Üst Giyim': 'ust',
+        'Alt Giyim': 'alt',
+        'Ayakkabı': 'ayakkabi',
+        'Dış Giyim': 'dis_giyim',
+        'Aksesuar': 'aksesuar'
+      };
+      const dbCategoryName = catMap[newItem.category] || newItem.category.toLowerCase();
+      
+      let categoryId = null;
+      let { data: catDataArray } = await supabase.from('categories').select('id').eq('name', dbCategoryName).limit(1);
+      if (catDataArray && catDataArray.length > 0) {
+        categoryId = catDataArray[0].id;
+      } else {
+        const { data: newCat, error: catErr } = await supabase.from('categories').insert([{ name: dbCategoryName }]).select();
+        if (!catErr && newCat) categoryId = newCat[0].id;
+      }
+
+      // Resolve color_id
+      let colorId = null;
+      if (newItem.color) {
+        const dbColorName = newItem.color.toLowerCase();
+        let { data: colDataArray } = await supabase.from('colors').select('id').eq('name', dbColorName).limit(1);
+        if (colDataArray && colDataArray.length > 0) {
+          colorId = colDataArray[0].id;
+        } else {
+          const { data: newCol, error: colErr } = await supabase.from('colors').insert([{ name: dbColorName }]).select();
+          if (!colErr && newCol) colorId = newCol[0].id;
+        }
+      }
+
+      const { error } = await supabase.from('wardrobe').insert({
         user_id: user.id,
+        category_id: categoryId,
+        color_id: colorId,
         name: newItem.name,
-        brand: newItem.brand,
-        category: newItem.category,
-        color: newItem.color,
-        size: newItem.size,
         image_url: imageUrl,
+        attributes: {
+          brand: newItem.brand || '',
+          size: newItem.size || '',
+        }
       });
+
       if (error) throw error;
       setAddModal(false);
       setNewItem({ name: '', brand: '', category: 'Üst Giyim', color: '', size: '' });
@@ -125,7 +205,7 @@ export default function WardrobeScreen() {
       { text: 'İptal', style: 'cancel' },
       {
         text: 'Sil', style: 'destructive', onPress: async () => {
-          await supabase.from('wardrobe_items').delete().eq('id', id);
+          await supabase.from('wardrobe').delete().eq('id', id);
           loadItems();
         }
       },

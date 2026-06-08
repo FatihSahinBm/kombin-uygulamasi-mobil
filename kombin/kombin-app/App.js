@@ -66,13 +66,42 @@ export default function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const checkAndCreateProfile = async (user) => {
+      if (!user) return;
+      try {
+        const { data: profile } = await supabase
+          .from('users')
+          .select('id')
+          .eq('id', user.id)
+          .maybeSingle();
+
+        if (!profile) {
+          const fullName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'Kullanıcı';
+          const avatarUrl = user.user_metadata?.avatar_url || null;
+          await supabase.from('users').insert({
+            id: user.id,
+            name: fullName,
+            avatar_url: avatarUrl,
+          });
+        }
+      } catch (err) {
+        console.log('Error creating initial user profile:', err);
+      }
+    };
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
+      if (session?.user) {
+        checkAndCreateProfile(session.user);
+      }
       setLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
+      if (session?.user) {
+        checkAndCreateProfile(session.user);
+      }
     });
 
     return () => subscription.unsubscribe();

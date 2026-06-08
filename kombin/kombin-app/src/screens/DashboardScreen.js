@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   RefreshControl,
   Dimensions,
+  Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../lib/supabase';
@@ -32,6 +33,7 @@ const StatCard = ({ icon, value, label, color }) => (
 
 export default function DashboardScreen({ navigation }) {
   const [user, setUser] = useState(null);
+  const [profile, setProfile] = useState(null);
   const [wardrobeCount, setWardrobeCount] = useState(0);
   const [outfitCount, setOutfitCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -44,19 +46,39 @@ export default function DashboardScreen({ navigation }) {
       setUser(u);
 
       if (u) {
+        // Profil detayları (özellikle avatar_url için)
+        let prof = null;
+        try {
+          const { data } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', u.id)
+            .single();
+          prof = data;
+        } catch (err) {
+          console.log('Profile fetch error:', err);
+        }
+        setProfile(prof);
+
         // Gardırop sayısı
         const { count: wCount } = await supabase
-          .from('wardrobe_items')
+          .from('wardrobe')
           .select('*', { count: 'exact', head: true })
           .eq('user_id', u.id);
         setWardrobeCount(wCount || 0);
 
         // Kombin sayısı
-        const { count: oCount } = await supabase
-          .from('outfits')
-          .select('*', { count: 'exact', head: true })
-          .eq('user_id', u.id);
-        setOutfitCount(oCount || 0);
+        let oCount = 0;
+        try {
+          const { count } = await supabase
+            .from('outfits')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', u.id);
+          oCount = count || 0;
+        } catch (err) {
+          console.log('Outfits count fetch error:', err);
+        }
+        setOutfitCount(oCount);
       }
     } catch (e) {
       console.log('Dashboard load error:', e);
@@ -80,7 +102,8 @@ export default function DashboardScreen({ navigation }) {
     return 'İyi akşamlar';
   };
 
-  const displayName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Kullanıcı';
+  const displayName = profile?.name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Kullanıcı';
+  const avatarUrl = profile?.avatar_url || user?.user_metadata?.avatar_url;
 
   if (loading) {
     return (
@@ -107,11 +130,15 @@ export default function DashboardScreen({ navigation }) {
             style={styles.avatarBtn}
             onPress={() => navigation.navigate('Profile')}
           >
-            <LinearGradient colors={['#a855f7', '#6366f1']} style={styles.avatar}>
-              <Text style={styles.avatarText}>
-                {displayName[0]?.toUpperCase() || '?'}
-              </Text>
-            </LinearGradient>
+            {avatarUrl ? (
+              <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
+            ) : (
+              <LinearGradient colors={['#a855f7', '#6366f1']} style={styles.avatar}>
+                <Text style={styles.avatarText}>
+                  {displayName[0]?.toUpperCase() || '?'}
+                </Text>
+              </LinearGradient>
+            )}
           </TouchableOpacity>
         </View>
 
@@ -244,6 +271,7 @@ const styles = StyleSheet.create({
   userName: { fontSize: 24, fontWeight: '800', color: '#fff' },
   avatarBtn: { shadowColor: '#a855f7', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.5, shadowRadius: 8, elevation: 8 },
   avatar: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
+  avatarImage: { width: 48, height: 48, borderRadius: 24 },
   avatarText: { color: '#fff', fontWeight: '800', fontSize: 18 },
   statsRow: { flexDirection: 'row', gap: 12 },
   statCard: {
