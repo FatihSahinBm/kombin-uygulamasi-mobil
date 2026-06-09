@@ -39,6 +39,21 @@ export const ui = {
     renderUserProfile(user) {
         const els = this.getElements();
         if(els.userName) els.userName.textContent = user.name;
+        
+        // Mobil-look dashboard selectors
+        const appUserName = document.getElementById('app-user-name');
+        if (appUserName) appUserName.textContent = user.name;
+        
+        const avatarBtn = document.getElementById('app-avatar-btn');
+        const fallbackEl = document.getElementById('app-avatar-fallback');
+        if (avatarBtn) {
+            const avatarUrl = user.avatar_url || (user.metadata && user.metadata.avatar_url);
+            if (avatarUrl) {
+                avatarBtn.innerHTML = `<img src="${avatarUrl}" class="app-avatar-img" alt="Avatar">`;
+            } else if (fallbackEl) {
+                fallbackEl.textContent = (user.name || 'K')[0].toUpperCase();
+            }
+        }
     },
 
     renderWeather(weather) {
@@ -97,6 +112,13 @@ export const ui = {
                 listContainer.innerHTML = listHtml;
             }
         }
+
+        // Mobil-look dashboard selectors
+        const appWardrobeStat = document.getElementById('app-stat-wardrobe');
+        if (appWardrobeStat) appWardrobeStat.textContent = count;
+
+        const appWardrobeDesc = document.getElementById('app-action-wardrobe-desc');
+        if (appWardrobeDesc) appWardrobeDesc.textContent = `${count} kıyafet`;
     },
 
     getOutfitImage(name, type, image_prompt) {
@@ -190,6 +212,10 @@ export const ui = {
                     <button class="pin-delete-btn" data-post-id="${post.id}" data-post-image="${post.image || ''}" title="Gönderiyi Sil"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></button>
                 ` : '';
                 const isSaved = savedPostIds.has(post.id);
+                const dateStr = post.created_at
+                    ? new Date(post.created_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })
+                    : '';
+
                 return `
                 <div class="feed-item" data-index="${index}" data-post-id="${post.id || ''}" style="animation: fadeInUp 0.6s ease-out ${animDelay}s both;">
                     <div class="feed-img-wrapper">
@@ -201,14 +227,16 @@ export const ui = {
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
                         </button>
                     </div>
-                    <div class="feed-info">
+                    <div class="feed-info" style="padding: 10px 4px 6px 4px;">
                         <div class="feed-user">
-                            <a class="feed-user-link" href="${profileHref}" data-user-id="${post.user_id || ''}" style="display:inline-flex;align-items:center;gap:0.6rem;text-decoration:none;color:inherit;">
-                                <div class="user-avatar" style="overflow:hidden;">${avatarHtml}</div>
-                                <span class="username">${userName}</span>
+                            <a class="feed-user-link" href="${profileHref}" data-user-id="${post.user_id || ''}" style="display:inline-flex;align-items:center;gap:0.8rem;text-decoration:none;color:inherit;margin-top: 4px; width: 100%;">
+                                <div class="user-avatar" style="width: 32px; height: 32px; border-radius: 50%; overflow:hidden; display: flex; align-items: center; justify-content: center; background: var(--primary-color); color: white; font-weight: bold; font-size: 0.9rem; flex-shrink: 0;">${avatarHtml}</div>
+                                <div style="display: flex; flex-direction: column; min-width: 0; flex: 1;">
+                                    <span class="username" style="font-size: 0.9rem; font-weight: 600; color: #ffffff; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${userName}</span>
+                                    <span class="post-date" style="font-size: 0.75rem; color: #8f8ea8; margin-top: 2px;">${dateStr}</span>
+                                </div>
                             </a>
                         </div>
-                        <p class="feed-desc" title="${post.tag || '#kombin'}">${post.tag || '#kombin'}</p>
                     </div>
                 </div>
             `}).join('');

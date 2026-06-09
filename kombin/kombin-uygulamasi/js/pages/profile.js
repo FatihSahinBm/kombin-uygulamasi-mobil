@@ -590,8 +590,8 @@ export const profile = {
                         guides: true,
                         center: true,
                         highlight: false,
-                        cropBoxMovable: false,
-                        cropBoxResizable: false,
+                        cropBoxMovable: true,
+                        cropBoxResizable: true,
                         toggleDragModeOnDblclick: false,
                     });
                 };

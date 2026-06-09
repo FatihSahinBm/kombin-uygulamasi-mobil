@@ -1024,5 +1024,20 @@ export const api = {
             console.warn('Image proxy çağrı hatası:', err);
             return null;
         }
+    },
+
+    async getOutfitsCount(userId) {
+        if (!supabase) return 0;
+        try {
+            const { count, error } = await supabase
+                .from('outfits')
+                .select('*', { count: 'exact', head: true })
+                .eq('user_id', userId);
+            if (error) throw error;
+            return count || 0;
+        } catch (err) {
+            console.warn("Outfits count fetch error in api.js:", err);
+            return 0;
+        }
     }
 };

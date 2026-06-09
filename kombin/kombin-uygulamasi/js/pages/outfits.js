@@ -24,6 +24,14 @@ export const outfits = {
         const cityDropdown = document.getElementById('outfit-city');
         if (cityDropdown) cityDropdown.value = storedCity;
         
+        // URL'den varsayılan tarzı al ve seç
+        const urlParams = new URLSearchParams(window.location.search);
+        const styleParam = urlParams.get('style') || urlParams.get('defaultStyle');
+        const styleSelect = document.getElementById('style-select');
+        if (styleSelect && styleParam) {
+            styleSelect.value = styleParam;
+        }
+        
         this.renderHistory();
 
         if (form) {

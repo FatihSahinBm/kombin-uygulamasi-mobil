@@ -79,11 +79,21 @@ export const social = {
         const addBtn = document.getElementById('add-post-btn');
         const modal = document.getElementById('add-post-modal');
         const closeBtn = document.getElementById('close-post-modal');
+        const cancelBtn = document.getElementById('cancel-post-btn');
         const form = document.getElementById('add-post-form');
         const imageInput = document.getElementById('post-image');
+        const uploadZone = document.getElementById('post-upload-zone');
+        const uploadPlaceholder = document.getElementById('upload-placeholder');
         const imagePreview = document.getElementById('post-image-preview');
         const previewImg = imagePreview ? imagePreview.querySelector('img') : null;
         const submitBtn = document.getElementById('submit-post-btn');
+
+        const resetForm = () => {
+            if (form) form.reset();
+            if (imagePreview) imagePreview.style.display = 'none';
+            if (uploadPlaceholder) uploadPlaceholder.style.display = 'flex';
+            if (imageInput) imageInput.value = '';
+        };
 
         if (addBtn && modal) {
             addBtn.addEventListener('click', () => modal.classList.add('active'));
@@ -92,23 +102,34 @@ export const social = {
         if (closeBtn && modal) {
             closeBtn.addEventListener('click', () => {
                 modal.classList.remove('active');
-                if (form) form.reset();
-                if (imagePreview) imagePreview.style.display = 'none';
+                resetForm();
+            });
+        }
+
+        if (cancelBtn && modal) {
+            cancelBtn.addEventListener('click', () => {
+                modal.classList.remove('active');
+                resetForm();
             });
         }
 
         window.addEventListener('click', (e) => {
             if (e.target === modal) {
                 modal.classList.remove('active');
-                if (form) form.reset();
-                if (imagePreview) imagePreview.style.display = 'none';
+                resetForm();
             }
             if (e.target === document.getElementById('post-details-modal')) {
                 document.getElementById('post-details-modal').classList.remove('active');
             }
         });
 
-        if (imageInput && imagePreview && previewImg) {
+        if (uploadZone && imageInput) {
+            uploadZone.addEventListener('click', () => {
+                imageInput.click();
+            });
+        }
+
+        if (imageInput && imagePreview && previewImg && uploadPlaceholder) {
             imageInput.addEventListener('change', (e) => {
                 const file = e.target.files[0];
                 if (file) {
@@ -116,10 +137,12 @@ export const social = {
                     reader.onload = (event) => {
                         previewImg.src = event.target.result;
                         imagePreview.style.display = 'block';
+                        uploadPlaceholder.style.display = 'none';
                     };
                     reader.readAsDataURL(file);
                 } else {
                     imagePreview.style.display = 'none';
+                    uploadPlaceholder.style.display = 'flex';
                 }
             });
         }
@@ -128,7 +151,8 @@ export const social = {
             form.addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const file = imageInput.files[0];
-                const desc = document.getElementById('post-description').value;
+                const desc = document.getElementById('post-description').value.trim();
+                const hashtags = document.getElementById('post-hashtags') ? document.getElementById('post-hashtags').value.trim() : '';
                 if (!file || !desc) return;
 
                 const originalText = submitBtn.innerHTML;
@@ -136,13 +160,13 @@ export const social = {
                 submitBtn.disabled = true;
 
                 try {
+                    const fullDesc = hashtags ? `${desc}\n\n${hashtags}` : desc;
                     // Sosyal paylaşımlar için ayrı bucket kullan
                     const imageUrl = await api.uploadImage(file, 'social_images');
-                    await api.shareOutfit({ description: desc, image: imageUrl, style: 'social' });
+                    await api.shareOutfit({ description: fullDesc, image: imageUrl, style: 'social' });
 
                     modal.classList.remove('active');
-                    form.reset();
-                    if (imagePreview) imagePreview.style.display = 'none';
+                    resetForm();
 
                     await this.loadFeed();
                     ui.showToast('Gönderi başarıyla paylaşıldı!', 'success');

@@ -4,108 +4,106 @@ import { utils } from '../utils.js';
 
 export const dashboard = {
     async init() {
-        console.log("Dashboard modülü yüklendi.");
+        console.log("Redesigned Dashboard modülü yüklendi.");
         try {
+            // Greeting text logic
+            const greetingTextEl = document.getElementById('app-greeting-text');
+            if (greetingTextEl) {
+                const hour = new Date().getHours();
+                let greeting = 'İyi akşamlar';
+                if (hour < 12) greeting = 'Günaydın';
+                else if (hour < 18) greeting = 'İyi günler';
+                greetingTextEl.textContent = `${greeting} 👋`;
+            }
+
             const user = await api.getUserProfile();
             ui.renderUserProfile(user);
 
-            // Bireysel hata yakalama blokları, biri çökerse diğeri etkilenmez
+            // Wardrobe count
             try {
                 const wardrobe = await api.getWardrobeItems(user.id);
                 ui.updateWardrobeCount(wardrobe.length, wardrobe);
-            } catch (err) { console.error("Gardırop yüklenemedi:", err); }
+            } catch (err) { 
+                console.error("Gardırop yüklenemedi:", err); 
+            }
             
+            // Outfit count
             try {
-                const feed = await api.getSocialFeed();
-                ui.renderSocialFeed(feed);
-            } catch (err) { console.error("Sosyal akış yüklenemedi:", err); }
-
-            // Şehirleri doldur
-            ui.populateCities('dashboard-city-list');
-
-            // Dinamik Şehir ve Günün Kombini Mantığı
-            const citySelect = document.getElementById('dashboard-city-select');
-            
-            const loadDailyOutfit = async (city) => {
-                try {
-                    ui.getElements().weatherInfo.innerHTML = "Yükleniyor...";
-                    const weather = await api.getWeather(city);
-                    ui.renderWeather(weather);
-
-                    const userStyle = (user && user.preferences && user.preferences.style) || 'casual';
-                    const userGender = (user && user.preferences && user.preferences.gender) || 'Bilinmiyor';
-                    
-                    const uMeta = (user && user.metadata) || {};
-                    const physicalTraits = `Cinsiyet: ${userGender}, Yaş: ${uMeta.age || 'Bilinmiyor'}, Boy: ${uMeta.height || '-'}cm, Kilo: ${uMeta.weight || '-'}kg, Vücut Tipi: ${uMeta.bodyType || 'Bilinmiyor'}, Ten: ${uMeta.skinTone || 'Bilinmiyor'}, Saç Rengi: ${uMeta.hairColor || 'Bilinmiyor'}, Göz Rengi: ${uMeta.eyeColor || 'Bilinmiyor'}`;
-
-                    const dailyOutfitParams = { 
-                        style: userStyle, 
-                        gender: userGender,
-                        budget: 3, 
-                        weatherCondition: weather ? weather.condition : 'Normal',
-                        weatherTemp: weather ? weather.temp : 20,
-                        weatherWind: weather ? weather.wind : 0,
-                        physicalTraits: physicalTraits
-                    };
-                    
-                    const displayArea = document.getElementById('daily-outfit-display');
-                    if (displayArea) displayArea.innerHTML = '<div class="spinner"></div><p>Rüzgara Göre Yeniden Kombinleniyor...</p>';
-                    
-                    const dailyOutfit = await api.generateOutfitIdea(dailyOutfitParams);
-                    ui.renderDailyOutfit(dailyOutfit);
-                } catch (err) {
-                    console.error("Günün Kombini yüklenemedi:", err);
-                    const displayArea = document.getElementById('daily-outfit-display');
-                    if (displayArea) displayArea.innerHTML = '<p style="color:red;">Kombin yüklenemedi.</p>';
-                    ui.getElements().weatherInfo.innerHTML = "Hata";
+                let outfitCount = await api.getOutfitsCount(user.id);
+                if (outfitCount === 0) {
+                    const history = utils.getData('kombin_history') || [];
+                    outfitCount = history.length;
                 }
-            };
-
-            if (citySelect) {
-                // Şehri LS'den veya varsayılan tut
-                const storedCity = utils.getData('preferred_city') || 'Istanbul';
-                citySelect.value = storedCity;
-                
-                await loadDailyOutfit(citySelect.value);
-                
-                // Kullanıcı şehir değiştirdiğinde
-                citySelect.addEventListener('change', async (e) => {
-                    utils.saveData('preferred_city', e.target.value);
-                    await loadDailyOutfit(e.target.value);
-                });
-            } else {
-                await loadDailyOutfit('Istanbul');
+                const appOutfitStat = document.getElementById('app-stat-outfit');
+                if (appOutfitStat) appOutfitStat.textContent = outfitCount;
+            } catch (err) {
+                console.error("Kombin sayısı yüklenemedi:", err);
             }
 
-            this.setupEvents();
+            // Likes count
+            try {
+                const likedPosts = await api.getMyLikes();
+                const likesCount = likedPosts ? likedPosts.length : 0;
+                const appLikesStat = document.getElementById('app-stat-likes');
+                if (appLikesStat) appLikesStat.textContent = likesCount;
+            } catch (err) {
+                console.error("Beğeni sayısı yüklenemedi:", err);
+            }
+
+            this.setupStyleChips();
         } catch (error) {
             console.error("Dashboard başlatılırken hata:", error);
         }
     },
 
-    setupEvents() {
-        const elements = ui.getElements();
+    setupStyleChips() {
+        const chips = document.querySelectorAll('.app-style-chip');
+        const generateBtn = document.getElementById('app-generate-btn');
+        const generateBtnText = document.getElementById('app-generate-btn-text');
 
-        // Mobil Menü
-        const mobileMenuBtn = document.querySelector('.mobile-menu-btn');
-        const navLinks = document.querySelector('.nav-links');
-        if (mobileMenuBtn && navLinks) {
-            mobileMenuBtn.addEventListener('click', () => {
-                const isOpen = navLinks.style.display === 'flex';
-                if (isOpen) {
-                    navLinks.style.display = 'none';
-                } else {
-                    navLinks.style.display = 'flex';
-                    navLinks.style.flexDirection = 'column';
-                    navLinks.style.position = 'absolute';
-                    navLinks.style.top = '100%';
-                    navLinks.style.left = '0';
-                    navLinks.style.width = '100%';
-                    navLinks.style.backgroundColor = 'var(--surface-color)';
-                    navLinks.style.padding = '1rem';
-                    navLinks.style.boxShadow = 'var(--shadow-md)';
-                    navLinks.style.zIndex = '1000';
+        if (!chips.length) return;
+
+        let activeStyle = 'casual';
+
+        // Chip selection styles matching styles in React Native
+        const styleDetails = {
+            casual: { label: '👕 Günlük', activeClass: 'active-casual' },
+            business: { label: '💼 İş', activeClass: 'active-business' },
+            sport: { label: '🏃 Sportif', activeClass: 'active-sport' },
+            streetwear: { label: '🧢 Sokak', activeClass: 'active-streetwear' },
+            elegant: { label: '🌹 Şık', activeClass: 'active-elegant' }
+        };
+
+        chips.forEach(chip => {
+            chip.addEventListener('click', () => {
+                const styleKey = chip.getAttribute('data-style');
+                if (!styleKey || !styleDetails[styleKey]) return;
+
+                // Deactivate all chips
+                chips.forEach(c => {
+                    c.classList.remove('active');
+                    const cKey = c.getAttribute('data-style');
+                    if (cKey && styleDetails[cKey]) {
+                        c.classList.remove(styleDetails[cKey].activeClass);
+                    }
+                });
+
+                // Activate clicked chip
+                chip.classList.add('active');
+                chip.classList.add(styleDetails[styleKey].activeClass);
+
+                activeStyle = styleKey;
+
+                // Update button text
+                if (generateBtnText) {
+                    generateBtnText.textContent = `${styleDetails[styleKey].label} Kombin Oluştur 🔮`;
                 }
+            });
+        });
+
+        if (generateBtn) {
+            generateBtn.addEventListener('click', () => {
+                window.location.href = `outfits.html?style=${activeStyle}`;
             });
         }
     }
