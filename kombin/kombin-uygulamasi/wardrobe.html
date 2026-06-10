@@ -13,7 +13,8 @@
     </script>
 </head>
 <body>
-    <nav class="navbar">
+    <!-- Üst Navbar (Masaüstü için) -->
+    <nav class="navbar navbar-dark">
         <div class="nav-container">
             <div class="logo">Kombin.AI</div>
             <ul class="nav-links">
@@ -27,30 +28,76 @@
         </div>
     </nav>
 
-    <main class="main-container fade-in">
-        <header style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem;">
-            <div>
-                <h1 class="main-title" style="font-size: 2rem;">👕 Gardırobum</h1>
-                <p class="subtitle" style="margin-top: 5px;">Dijital kıyafet dolabını baştan yarat</p>
-            </div>
-            <div style="display: flex; gap: 10px;">
-                <select id="wardrobe-filter" class="form-control" style="width: auto; padding: 0.5rem; background: var(--bg-color);">
-                    <option value="all">Tüm Gardırop</option>
-                    <option value="ust">Sadece Üst Giyim</option>
-                    <option value="alt">Sadece Alt Giyim</option>
-                    <option value="dis_giyim">Sadece Dış Giyim</option>
-                    <option value="ayakkabi">Sadece Ayakkabı</option>
-                    <option value="aksesuar">Sadece Aksesuar</option>
-                </select>
-                <button class="btn btn-primary" id="add-wardrobe-btn">+ Yeni Kıyafet Ekle</button>
-            </div>
-        </header>
+    <div class="app-wardrobe-container">
+        <div class="app-wardrobe-wrapper">
+            <!-- Header -->
+            <header class="app-wardrobe-header">
+                <h1 class="app-wardrobe-title">👕 Gardırobum</h1>
+                <div class="app-wardrobe-subtitle" id="wardrobe-count">0 kıyafet</div>
+            </header>
 
-        <!-- Liste -->
-        <div id="wardrobe-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem; min-height: 40vh;">
-            <div class="spinner" style="margin: 3rem auto; grid-column: 1 / -1;"></div>
+            <!-- Search Bar -->
+            <div class="app-search-bar">
+                <input type="text" id="wardrobe-search" class="app-search-input" placeholder="Kıyafet ara...">
+            </div>
+
+            <!-- Categories -->
+            <div class="app-category-scroll" id="category-chips-container">
+                <div class="app-category-chip active" data-category="all">
+                    <span class="app-category-chip-text">Tümü</span>
+                </div>
+                <div class="app-category-chip" data-category="ust">
+                    <span class="app-category-chip-text">Üst Giyim</span>
+                </div>
+                <div class="app-category-chip" data-category="alt">
+                    <span class="app-category-chip-text">Alt Giyim</span>
+                </div>
+                <div class="app-category-chip" data-category="ayakkabi">
+                    <span class="app-category-chip-text">Ayakkabı</span>
+                </div>
+                <div class="app-category-chip" data-category="dis_giyim">
+                    <span class="app-category-chip-text">Dış Giyim</span>
+                </div>
+                <div class="app-category-chip" data-category="aksesuar">
+                    <span class="app-category-chip-text">Aksesuar</span>
+                </div>
+            </div>
+
+            <!-- Liste -->
+            <main class="app-wardrobe-grid" id="wardrobe-list">
+                <div class="spinner" style="margin: 3rem auto; grid-column: 1 / -1;"></div>
+            </main>
         </div>
-    </main>
+    </div>
+
+    <!-- FAB (Floating Action Button) -->
+    <button class="app-fab" id="add-wardrobe-btn" title="Yeni Kıyafet Ekle">
+        <span class="app-fab-text">+</span>
+    </button>
+
+    <!-- Alt Tab Bar (Mobil için) -->
+    <div class="app-bottom-nav">
+        <a href="dashboard.html" class="app-bottom-nav-item">
+            <span class="app-bottom-nav-icon">🏠</span>
+            <span>Ana Sayfa</span>
+        </a>
+        <a href="wardrobe.html" class="app-bottom-nav-item active">
+            <span class="app-bottom-nav-icon">👕</span>
+            <span>Gardırop</span>
+        </a>
+        <a href="outfits.html" class="app-bottom-nav-item">
+            <span class="app-bottom-nav-icon">✨</span>
+            <span>Kombin</span>
+        </a>
+        <a href="social.html" class="app-bottom-nav-item">
+            <span class="app-bottom-nav-icon">🔥</span>
+            <span>Sosyal</span>
+        </a>
+        <a href="profile.html" class="app-bottom-nav-item">
+            <span class="app-bottom-nav-icon">👤</span>
+            <span>Profil</span>
+        </a>
+    </div>
 
     <!-- Çoklu Kıyafet Algılama Modalı -->
     <div class="modal" id="multi-detect-modal">

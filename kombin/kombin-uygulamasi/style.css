@@ -1348,4 +1348,290 @@ p { color: var(--text-secondary); margin-bottom: 0.5rem; }
     padding-top: 0;
 }
 
+/* --- APP WARDROBE SECTION (MOBILE ALIGNMENT) --- */
+.app-wardrobe-container {
+    background-color: #0a0a0f;
+    color: #ffffff;
+    min-height: 100vh;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    display: flex;
+    flex-direction: column;
+}
+
+.app-wardrobe-wrapper {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0;
+}
+
+.app-wardrobe-header {
+    background: linear-gradient(180deg, #0f0c29 0%, #302b63 100%);
+    padding: 2.5rem 1.5rem 1.8rem 1.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.app-wardrobe-title {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #ffffff;
+    letter-spacing: -0.5px;
+    margin-bottom: 4px;
+}
+
+.app-wardrobe-subtitle {
+    font-size: 0.85rem;
+    color: #a5b4fc;
+    font-weight: 500;
+}
+
+.app-search-bar {
+    padding: 1rem 1.5rem;
+    background-color: #0a0a0f;
+}
+
+.app-search-input {
+    width: 100%;
+    background-color: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 14px;
+    padding: 0.75rem 1rem;
+    font-size: 0.95rem;
+    color: #ffffff;
+    outline: none;
+    transition: border-color 0.2s, background-color 0.2s;
+}
+
+.app-search-input:focus {
+    border-color: rgba(168, 85, 247, 0.6);
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.app-search-input::placeholder {
+    color: #6b7280;
+}
+
+.app-category-scroll {
+    display: flex;
+    gap: 0.55rem;
+    overflow-x: auto;
+    padding: 0.25rem 1.5rem 1rem 1.5rem;
+    background-color: #0a0a0f;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.app-category-scroll::-webkit-scrollbar {
+    display: none;
+}
+
+.app-category-chip {
+    padding: 0.55rem 1.1rem;
+    border-radius: 100px;
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+.app-category-chip-text {
+    color: #9ca3af;
+    font-weight: 600;
+    font-size: 0.8rem;
+}
+
+.app-category-chip.active {
+    background: linear-gradient(90deg, #a855f7 0%, #6366f1 100%);
+    border-color: transparent;
+}
+
+.app-category-chip.active .app-category-chip-text {
+    color: #ffffff;
+    font-weight: 700;
+}
+
+/* Wardrobe Grid */
+.app-wardrobe-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.85rem;
+    padding: 1.5rem;
+    flex-grow: 1;
+}
+
+@media (min-width: 769px) {
+    .app-wardrobe-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+.app-wardrobe-item-card {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 18px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    transition: transform 0.2s, box-shadow 0.2s;
+    cursor: pointer;
+}
+
+.app-wardrobe-item-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+}
+
+.app-wardrobe-item-img-wrapper {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    overflow: hidden;
+    position: relative;
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.app-wardrobe-item-img-wrapper img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.app-wardrobe-item-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.5rem;
+    background: linear-gradient(135deg, #302b63, #24243e);
+}
+
+.app-wardrobe-item-info {
+    padding: 0.85rem;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.app-wardrobe-item-name {
+    color: #ffffff;
+    font-weight: 700;
+    font-size: 0.9rem;
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.app-wardrobe-item-brand {
+    color: #9ca3af;
+    font-size: 0.75rem;
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.app-wardrobe-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 4px;
+}
+
+.app-wardrobe-tag {
+    background-color: rgba(168, 85, 247, 0.2);
+    color: #a855f7;
+    font-size: 0.68rem;
+    font-weight: 600;
+    padding: 0.2rem 0.5rem;
+    border-radius: 6px;
+    display: inline-block;
+}
+
+/* FAB */
+.app-fab {
+    position: fixed;
+    bottom: 24px;
+    right: 20px;
+    width: 58px;
+    height: 58px;
+    border-radius: 50%;
+    border: none;
+    outline: none;
+    cursor: pointer;
+    background: linear-gradient(135deg, #a855f7, #6366f1);
+    box-shadow: 0 8px 16px rgba(168, 85, 247, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 999;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.app-fab:hover {
+    transform: scale(1.08) translateY(-2px);
+    box-shadow: 0 12px 20px rgba(168, 85, 247, 0.5);
+}
+
+.app-fab-text {
+    color: #ffffff;
+    font-size: 2rem;
+    font-weight: 300;
+    line-height: 1;
+}
+
+/* Modal styling adjustment in dark mode */
+.app-wardrobe-container .modal-content {
+    background: #13111a !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+.app-wardrobe-container .modal-header {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+.app-wardrobe-container .modal-header h2 {
+    color: #ffffff !important;
+}
+
+.app-wardrobe-container .close-btn {
+    color: #9ca3af !important;
+}
+
+.app-wardrobe-container .form-group label {
+    color: #d1d5db !important;
+}
+
+.app-wardrobe-container .form-control {
+    background-color: rgba(255, 255, 255, 0.07) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    color: #ffffff !important;
+}
+
+.app-wardrobe-container .form-control:focus {
+    border-color: rgba(168, 85, 247, 0.6) !important;
+}
+
+.app-wardrobe-container #ai-attributes-container {
+    background-color: rgba(255, 255, 255, 0.03) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+.app-wardrobe-container #ai-attributes-container h4 {
+    color: #ffffff !important;
+}
+
+@media (max-width: 768px) {
+    .app-wardrobe-container {
+        padding-bottom: 80px; /* Space for bottom nav and avoid overlap with FAB */
+    }
+}
+
+
 
