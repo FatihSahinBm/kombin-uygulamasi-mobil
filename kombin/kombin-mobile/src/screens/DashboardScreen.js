@@ -10,6 +10,7 @@ import {
   Dimensions,
   Image,
   Alert,
+  TextInput,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -38,6 +39,22 @@ const StatCard = ({ icon, value, label, color }) => (
 // ============================================================
 // ÖZELLİK 3A: Hava Durumu API Fonksiyonu
 // ============================================================
+// ============================================================
+const getWeatherEmoji = (iconCode) => {
+  const map = {
+    '01d': '☀️', '01n': '🌙',
+    '02d': '⛅', '02n': '☁️',
+    '03d': '☁️', '03n': '☁️',
+    '04d': '☁️', '04n': '☁️',
+    '09d': '🌧️', '09n': '🌧️',
+    '10d': '🌦️', '10n': '🌧️',
+    '11d': '⛈️', '11n': '⛈️',
+    '13d': '❄️', '13n': '❄️',
+    '50d': '🌫️', '50n': '🌫️',
+  };
+  return map[iconCode] || '🌤️';
+};
+
 const fetchWeather = async (city = 'Istanbul') => {
   const apiKey = process.env.EXPO_PUBLIC_WEATHER_API_KEY;
   if (!apiKey) return { temp: 20, condition: 'Güneşli', icon: '☀️' };
@@ -49,9 +66,7 @@ const fetchWeather = async (city = 'Istanbul') => {
     return {
       temp: Math.round(data.main.temp),
       condition: data.weather[0].description,
-      icon: data.weather[0].icon
-        ? `https://openweathermap.org/img/wn/${data.weather[0].icon}.png`
-        : '🌤️',
+      icon: data.weather[0].icon ? getWeatherEmoji(data.weather[0].icon) : '🌤️',
       city: data.name,
     };
   } catch {
@@ -222,6 +237,26 @@ export default function DashboardScreen({ navigation }) {
   const [weather, setWeather] = useState(null);
   const [dailyOutfit, setDailyOutfit] = useState(null);
   const [loadingDailyOutfit, setLoadingDailyOutfit] = useState(false);
+  const [customCity, setCustomCity] = useState('');
+
+  const handleCityChange = async () => {
+    if (!customCity || !customCity.trim()) return;
+    setLoadingDailyOutfit(true);
+    const newWeather = await fetchWeather(customCity.trim());
+    setWeather(newWeather);
+    // Yeni hava durumuna göre kombini yenile
+    if (user) {
+      const { data: rawItems } = await supabase
+        .from('wardrobe')
+        .select('*, categories(name), colors(name)')
+        .eq('user_id', user.id);
+      const outfit = generateLocalOutfit(rawItems || [], newWeather?.temp || 20);
+      if (outfit) {
+        setDailyOutfit(outfit);
+      }
+    }
+    setLoadingDailyOutfit(false);
+  };
 
   const getTodayKey = () => new Date().toISOString().split('T')[0]; // "2024-06-25"
 
@@ -290,11 +325,11 @@ export default function DashboardScreen({ navigation }) {
           .eq('user_id', u.id);
         setWardrobeCount(wCount || 0);
 
-        // Kombin sayısı
+        // Kombin sayısı (social_feed tablosundaki gönderileri sayıyoruz)
         let oCount = 0;
         try {
           const { count } = await supabase
-            .from('outfits')
+            .from('social_feed')
             .select('*', { count: 'exact', head: true })
             .eq('user_id', u.id);
           oCount = count || 0;
@@ -305,6 +340,7 @@ export default function DashboardScreen({ navigation }) {
 
         // ÖZELLİK 3: Hava durumu çek
         const userCity = prof?.city || 'Istanbul';
+        setCustomCity(userCity);
         const weatherData = await fetchWeather(userCity);
         setWeather(weatherData);
 
@@ -397,7 +433,18 @@ export default function DashboardScreen({ navigation }) {
               <View style={styles.weatherLeft}>
                 <Text style={styles.weatherTemp}>{weather.temp}°C</Text>
                 <Text style={styles.weatherCondition}>{weather.condition}</Text>
-                {weather.city && <Text style={styles.weatherCity}>📍 {weather.city}</Text>}
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+                  <Text style={styles.weatherCity}>📍 </Text>
+                  <TextInput
+                    style={[styles.weatherCity, { padding: 0, margin: 0, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.4)', minWidth: 100 }]}
+                    value={customCity}
+                    onChangeText={setCustomCity}
+                    onSubmitEditing={handleCityChange}
+                    placeholder="Şehir adı..."
+                    placeholderTextColor="rgba(255,255,255,0.6)"
+                    returnKeyType="search"
+                  />
+                </View>
               </View>
               <View style={styles.weatherRight}>
                 {typeof weather.icon === 'string' && weather.icon.startsWith('http') ? (

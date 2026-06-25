@@ -1,8 +1,8 @@
 {
   "expo": {
     "name": "Kombin.AI",
-    "slug": "kombin-uygulamasi",
-    "version": "1.0.0",
+    "slug": "kombin-mobile",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",

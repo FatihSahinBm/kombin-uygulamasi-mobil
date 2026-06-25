@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../lib/supabase';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const STYLE_OPTIONS = [
   { key: 'casual', label: 'Günlük (Casual)', emoji: '👕' },
@@ -70,40 +71,18 @@ const parseParcalar = (outfitText) => {
 };
 
 // ============================================================
-// ÖZELLİK 2: AI Outfit Scorer - Gemini'ye puan isteği gönder
+// ÖZELLİK 2: AI Outfit Scorer - Edge Function'a puan isteği gönder
 // ============================================================
 const scoreOutfitWithAI = async (outfitText) => {
-  const geminiApiKey = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
-  const prompt = `Sen bir moda eleştirmenisin. Bu kombini renk uyumu (colorHarmony), tarz bütünlüğü (styleCohesion) ve ortam/hava uygunluğu (occasionSuitability) açısından değerlendir.
+  const { data, error } = await supabase.functions.invoke('score-outfit', {
+    body: { outfitText }
+  });
 
-Kombin Parçaları:
-${outfitText}
+  if (error) {
+    throw new Error('Supabase Edge Function hatası: ' + error.message);
+  }
 
-Yanıtı kesinlikle aşağıdaki JSON formatında dön, başka hiçbir açıklama ekleme:
-{
-  "totalScore": 88,
-  "categories": {
-    "colorHarmony": { "score": 90, "comment": "Renkler dengeli." },
-    "styleCohesion": { "score": 85, "comment": "Tarz bütünlüğü yüksek." },
-    "occasionSuitability": { "score": 90, "comment": "Hava durumuna uygun." }
-  },
-  "suggestions": ["Şunu ekleyebilirsin", "Bunu değiştirebilirsin"]
-}`;
-
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
-    }
-  );
-  if (!response.ok) throw new Error('Gemini API hatası');
-  const data = await response.json();
-  const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-  const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) throw new Error('Geçersiz JSON yanıtı');
-  return JSON.parse(jsonMatch[0]);
+  return data;
 };
 
 // ============================================================
@@ -173,59 +152,74 @@ export default function OutfitsScreen({ route }) {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Giriş yapmanız gerekiyor.');
 
-      // Gardırop öğelerini çek
-      const { data: rawItems } = await supabase
-        .from('wardrobe')
-        .select('name, categories(name), colors(name), attributes')
-        .eq('user_id', user.id)
-        .limit(20);
-
-      const wardrobeItems = (rawItems || []).map(item => ({
-        name: item.name,
-        category: item.categories?.name === 'ust' ? 'Üst Giyim' :
-                  item.categories?.name === 'alt' ? 'Alt Giyim' :
-                  item.categories?.name === 'ayakkabi' ? 'Ayakkabı' :
-                  item.categories?.name === 'dis_giyim' ? 'Dış Giyim' :
-                  item.categories?.name === 'aksesuar' ? 'Aksesuar' : (item.categories?.name || 'Üst Giyim'),
-        color: item.colors?.name || '',
-        brand: item.attributes?.brand || ''
-      }));
-
-      const prompt = `Sen bir moda uzmanısın. Aşağıdaki kriterlere göre Türkçe bir kombin önerisi yap:
-
-Stil: ${STYLE_OPTIONS.find(s => s.key === style)?.label}
-Bütçe: ${budgetMin}TL - ${budgetMax}TL
-Kaynak: ${SOURCE_OPTIONS.find(s => s.key === source)?.label}
-Renk Paleti: ${COLOR_OPTIONS.find(c => c.key === colorPalette)?.label}
-${city ? `Şehir: ${city}` : ''}
-${wardrobeItems?.length > 0 ? `\nGardırop: ${wardrobeItems.map(i => `${i.name} (${i.category}${i.color ? ', ' + i.color : ''})`).join(', ')}` : ''}
-
-Lütfen şu formatta yanıt ver:
-🎯 KOMBİN ADI: [kombin ismi]
-✨ PARÇALAR:
-[emoji] [parça adı ve kısa açıklama]
-[emoji] [parça adı ve kısa açıklama]
-[emoji] [parça adı ve kısa açıklama]
-💡 STİL İPUCU: [bir cümle stil tavsiyesi]
-🌡️ UYGUN HAVA: [hangi hava koşuluna uygun]`;
-
-      // Gemini API çağrısı
-      const geminiApiKey = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-          }),
+      // Kullanıcının fiziksel özelliklerini al (AsyncStorage'dan veya Supabase'den)
+      let physicalTraits = 'Belirtilmemiş';
+      let userGender = 'Belirtilmedi';
+      try {
+        const stored = await AsyncStorage.getItem('physical_settings');
+        const localSettings = stored ? JSON.parse(stored) : {};
+        
+        const { data: dbUser } = await supabase.from('users').select('gender, age, body_type, skin_tone').eq('id', user.id).single();
+        
+        userGender = dbUser?.gender || localSettings.gender || 'Belirtilmedi';
+        const age = dbUser?.age || localSettings.age || 'Belirtilmedi';
+        const bodyType = dbUser?.body_type || localSettings.bodyType || 'Belirtilmedi';
+        const skinTone = dbUser?.skin_tone || localSettings.skinTone || 'Belirtilmedi';
+        
+        if (userGender !== 'Belirtilmedi' || age !== 'Belirtilmedi' || bodyType !== 'Belirtilmedi' || skinTone !== 'Belirtilmedi') {
+            physicalTraits = `Yaş: ${age}, Vücut Tipi: ${bodyType}, Ten Rengi: ${skinTone}`;
         }
-      );
+      } catch(e) { console.log('Profil okunurken hata:', e); }
+
+      // Şehir girilmişse hava durumunu çek
+      let currentCondition = 'Bilinmiyor';
+      let currentTemp = '20';
+      if (city && city.trim() !== '') {
+        try {
+          const apiKey = process.env.EXPO_PUBLIC_WEATHER_API_KEY;
+          if (apiKey) {
+            const url = `https://api.openweathermap.org/data/2.5/weather?q=${city}&units=metric&lang=tr&appid=${apiKey}`;
+            const res = await fetch(url);
+            if (res.ok) {
+              const data = await res.json();
+              currentTemp = Math.round(data.main.temp).toString();
+              currentCondition = data.weather[0].description;
+            }
+          }
+        } catch(e) {
+          console.log('Hava durumu çekilemedi:', e);
+        }
+      }
+
+      // Supabase Edge Function çağrısı
+      const requestBody = {
+        weatherCondition: currentCondition,
+        weatherTemp: currentTemp,
+        physicalTraits: physicalTraits,
+        style: STYLE_OPTIONS.find(s => s.key === style)?.label || style,
+        minBudget: parseInt(budgetMin) || 0,
+        maxBudget: parseInt(budgetMax) || 5000,
+        gender: userGender,
+        colorPalette: COLOR_OPTIONS.find(c => c.key === colorPalette)?.label || colorPalette,
+      };
+
+      const { data: edgeData, error: edgeError } = await supabase.functions.invoke('generate-outfit', {
+        body: requestBody
+      });
 
       let outfitText;
-      if (response.ok) {
-        const aiData = await response.json();
-        outfitText = aiData.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (edgeError) {
+        console.log("Edge function error:", edgeError);
+      } else if (edgeData && edgeData.outfit) {
+        const out = edgeData.outfit;
+        outfitText = `🎯 KOMBİN ADI: ${STYLE_OPTIONS.find(s => s.key === style)?.label || 'Özel'} Kombini\n✨ PARÇALAR:\n`;
+        if (out.top) outfitText += `👕 ${out.top}\n`;
+        if (out.bottom) outfitText += `👖 ${out.bottom}\n`;
+        if (out.shoes) outfitText += `👟 ${out.shoes}\n`;
+        if (out.outerwear) outfitText += `🧥 ${out.outerwear}\n`;
+        if (out.accessory) outfitText += `💍 ${out.accessory}\n`;
+        if (out.reasoning) outfitText += `\n💡 STİL İPUCU: ${out.reasoning}\n`;
+        outfitText += `🌡️ UYGUN HAVA: Belirtilen hava koşuluna uygundur.`;
       }
 
       // Fallback mock data

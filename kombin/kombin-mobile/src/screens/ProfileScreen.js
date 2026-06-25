@@ -747,7 +747,7 @@ export default function ProfileScreen() {
           <TouchableOpacity style={styles.logoutButton} onPress={logout}>
             <Text style={styles.logoutButtonText}>Çıkış Yap</Text>
           </TouchableOpacity>
-          <Text style={styles.appInfo}>Kombin.AI v1.0.0</Text>
+          <Text style={styles.appInfo}>Kombin.AI v1.0.1</Text>
         </View>
       </ScrollView>
 
