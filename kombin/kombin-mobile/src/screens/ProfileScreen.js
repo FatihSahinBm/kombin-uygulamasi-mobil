@@ -17,6 +17,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
 
 const { width } = Dimensions.get('window');
@@ -107,6 +108,34 @@ export default function ProfileScreen() {
       setProfile(prof);
       setEditName(prof?.name || u.user_metadata?.full_name || '');
       setEditBio(prof?.bio || '');
+
+      // ÖZELLİK 4: Fiziksel özelliklerı Supabase'den yükle, yoksa AsyncStorage'dan çek
+      try {
+        const physicalFromDB = {
+          gender: prof?.gender || null,
+          age: prof?.age ? String(prof.age) : '',
+          bodyType: prof?.body_type || null,
+          skinTone: prof?.skin_tone || null,
+        };
+        const hasDBData = physicalFromDB.gender || physicalFromDB.bodyType || physicalFromDB.skinTone;
+        if (hasDBData) {
+          setSettings(prev => ({
+            ...prev,
+            gender: physicalFromDB.gender || prev.gender,
+            age: physicalFromDB.age || prev.age,
+            bodyType: physicalFromDB.bodyType || prev.bodyType,
+            skinTone: physicalFromDB.skinTone || prev.skinTone,
+          }));
+        } else {
+          // AsyncStorage fallback
+          const stored = await AsyncStorage.getItem('physical_settings');
+          if (stored) {
+            setSettings(prev => ({ ...prev, ...JSON.parse(stored) }));
+          }
+        }
+      } catch (settingsErr) {
+        console.log('Settings load error:', settingsErr);
+      }
 
       // 2. Fetch my posts
       const { data: myFeed, error: myFeedErr } = await supabase
@@ -827,7 +856,34 @@ export default function ProfileScreen() {
                 <TouchableOpacity style={styles.cancelBtn} onPress={() => setSettingsModal(false)}>
                   <Text style={styles.cancelBtnText}>İptal</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.saveBtn} onPress={() => { setSettingsModal(false); Alert.alert('Kaydedildi', 'Fiziksel özellikler kaydedildi.'); }}>
+                <TouchableOpacity
+                  style={styles.saveBtn}
+                  onPress={async () => {
+                    try {
+                      // ÖZELLİK 4: Supabase users tablosuna fiziksel özellikleri kaydet
+                      if (user) {
+                        await supabase.from('users').update({
+                          gender: settings.gender,
+                          age: settings.age ? parseInt(settings.age) : null,
+                          body_type: settings.bodyType,
+                          skin_tone: settings.skinTone,
+                        }).eq('id', user.id);
+                      }
+                      // AsyncStorage yedek olarak da kaydet
+                      await AsyncStorage.setItem('physical_settings', JSON.stringify(settings));
+                      setSettingsModal(false);
+                      Alert.alert('✅ Kaydedildi', 'Fiziksel özellikler kaydedildi. Günün kombini bir sonraki açılışta kişiselleştirilecek.');
+                    } catch (err) {
+                      console.log('Settings save error:', err);
+                      // Supabase hata verse bile AsyncStorage'a kaydet
+                      try {
+                        await AsyncStorage.setItem('physical_settings', JSON.stringify(settings));
+                      } catch {}
+                      setSettingsModal(false);
+                      Alert.alert('✅ Kaydedildi', 'Özellikler yerel olarak kaydedildi.');
+                    }
+                  }}
+                >
                   <LinearGradient colors={['#a855f7', '#6366f1']} style={styles.saveBtnGradient}>
                     <Text style={styles.saveBtnText}>Kaydet</Text>
                   </LinearGradient>

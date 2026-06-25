@@ -149,7 +149,7 @@ export default function SocialScreen() {
           post_likes(user_id)
         `)
         .order('created_at', { ascending: false })
-        .limit(30);
+        .limit(50);
 
       if (error) {
         // Tablo yoksa mock data göster
@@ -159,7 +159,7 @@ export default function SocialScreen() {
         ];
         setPosts(mockPosts);
       } else {
-        const normalizedData = (data || []).map(post => ({
+        let normalizedData = (data || []).map(post => ({
           ...post,
           image_url: post.image,
           description: post.tag,
@@ -169,6 +169,64 @@ export default function SocialScreen() {
             avatar_url: post.users?.avatar_url
           }
         }));
+
+        // ===== ÖZELLİK 5: AKILLl SIRALAMA ALGORTIMASİ =====
+        if (user) {
+          try {
+            // 1. Kullanıcının takip ettikleri
+            const { data: followingData } = await supabase
+              .from('user_follows')
+              .select('following_id')
+              .eq('follower_id', user.id);
+            const followingSet = new Set((followingData || []).map(f => f.following_id));
+
+            // 2. Kullanıcının beğendiği postların hashtag'lerini topla
+            const { data: likedPostsData } = await supabase
+              .from('post_likes')
+              .select('post_id')
+              .eq('user_id', user.id)
+              .limit(50);
+
+            const likedPostIds = (likedPostsData || []).map(l => l.post_id);
+            let preferredTagsSet = new Set();
+
+            if (likedPostIds.length > 0) {
+              const { data: likedPostsDetails } = await supabase
+                .from('social_feed')
+                .select('tag')
+                .in('id', likedPostIds);
+
+              (likedPostsDetails || []).forEach(p => {
+                const hashtags = p.tag?.match(/#[a-zA-Z0-9_]+/g) || [];
+                hashtags.forEach(tag => preferredTagsSet.add(tag.toLowerCase()));
+              });
+            }
+
+            // 3. Her post için puan hesapla
+            // Puan = (beğeni × 5) + (takip bonusu 50) + (hashtag eşleşme × 20) - (saat × 1.5)
+            normalizedData = normalizedData.map(post => {
+              const likeScore = (post.post_likes?.length || 0) * 5;
+              const followBonus = followingSet.has(post.user_id) ? 50 : 0;
+
+              const postTags = (post.tags || []).map(t => t.toLowerCase());
+              const tagMatchCount = postTags.filter(t => preferredTagsSet.has(t)).length;
+              const tagBonus = tagMatchCount * 20;
+
+              const ageHours = (Date.now() - new Date(post.created_at).getTime()) / (1000 * 60 * 60);
+              const timeDecay = ageHours * 1.5;
+
+              const rankScore = likeScore + followBonus + tagBonus - timeDecay;
+              return { ...post, _rankScore: rankScore };
+            });
+
+            // 4. Puana göre büyükten küçüğe sırala
+            normalizedData.sort((a, b) => (b._rankScore || 0) - (a._rankScore || 0));
+          } catch (rankErr) {
+            console.log('Ranking error (non-fatal):', rankErr);
+          }
+        }
+        // ==============================================
+
         setPosts(normalizedData);
 
         // Fetch image aspect ratios dynamically to avoid cropping
