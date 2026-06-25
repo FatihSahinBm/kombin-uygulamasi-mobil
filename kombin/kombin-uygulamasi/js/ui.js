@@ -39,21 +39,6 @@ export const ui = {
     renderUserProfile(user) {
         const els = this.getElements();
         if(els.userName) els.userName.textContent = user.name;
-        
-        // Mobil-look dashboard selectors
-        const appUserName = document.getElementById('app-user-name');
-        if (appUserName) appUserName.textContent = user.name;
-        
-        const avatarBtn = document.getElementById('app-avatar-btn');
-        const fallbackEl = document.getElementById('app-avatar-fallback');
-        if (avatarBtn) {
-            const avatarUrl = user.avatar_url || (user.metadata && user.metadata.avatar_url);
-            if (avatarUrl) {
-                avatarBtn.innerHTML = `<img src="${avatarUrl}" class="app-avatar-img" alt="Avatar">`;
-            } else if (fallbackEl) {
-                fallbackEl.textContent = (user.name || 'K')[0].toUpperCase();
-            }
-        }
     },
 
     renderWeather(weather) {
@@ -112,13 +97,6 @@ export const ui = {
                 listContainer.innerHTML = listHtml;
             }
         }
-
-        // Mobil-look dashboard selectors
-        const appWardrobeStat = document.getElementById('app-stat-wardrobe');
-        if (appWardrobeStat) appWardrobeStat.textContent = count;
-
-        const appWardrobeDesc = document.getElementById('app-action-wardrobe-desc');
-        if (appWardrobeDesc) appWardrobeDesc.textContent = `${count} kıyafet`;
     },
 
     getOutfitImage(name, type, image_prompt) {
@@ -186,7 +164,7 @@ export const ui = {
         }
     },
 
-    renderSocialFeed(feedData, currentUserId = null, savedPostIds = new Set()) {
+    renderSocialFeed(feedData, currentUserId = null, savedPostIds = new Set(), currentUserEmail = null, likedPostIds = new Set()) {
         const els = this.getElements();
         if(els.socialFeedContainer) {
             if (!feedData || feedData.length === 0) {
@@ -205,17 +183,15 @@ export const ui = {
                 
                 const animDelay = (index % 10) * 0.05;
                 const isOwn = currentUserId && post.user_id === currentUserId;
+                const isAdmin = currentUserEmail === 'fatihsahinbm@gmail.com';
                 const profileHref = post.user_id
                     ? `profile.html?user=${encodeURIComponent(post.user_id)}&name=${encodeURIComponent(userName)}`
                     : 'profile.html';
-                const deleteBtn = isOwn ? `
+                const deleteBtn = (isOwn || isAdmin) ? `
                     <button class="pin-delete-btn" data-post-id="${post.id}" data-post-image="${post.image || ''}" title="Gönderiyi Sil"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></button>
                 ` : '';
                 const isSaved = savedPostIds.has(post.id);
-                const dateStr = post.created_at
-                    ? new Date(post.created_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })
-                    : '';
-
+                const isLiked = likedPostIds.has(post.id);
                 return `
                 <div class="feed-item" data-index="${index}" data-post-id="${post.id || ''}" style="animation: fadeInUp 0.6s ease-out ${animDelay}s both;">
                     <div class="feed-img-wrapper">
@@ -223,20 +199,23 @@ export const ui = {
                         <div class="feed-overlay"></div>
                         ${deleteBtn}
                         <button class="pin-save-btn ${isSaved ? 'saved' : ''}" data-post-id="${post.id}" title="Kaydet">${isSaved ? 'Kaydedildi' : 'Kaydet'}</button>
+                        <button class="pin-like-btn like-btn ${isLiked ? 'liked' : ''}" data-post-id="${post.id}" title="Beğen" style="${isLiked ? 'color: var(--accent-color);' : ''}">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="${isLiked ? 'var(--accent-color)' : 'none'}" stroke="${isLiked ? 'var(--accent-color)' : 'currentColor'}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                            </svg>
+                        </button>
                         <button class="pin-share-btn" data-post-id="${post.id}" data-post-image="${post.image || ''}" title="Paylaş">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
                         </button>
                     </div>
-                    <div class="feed-info" style="padding: 10px 4px 6px 4px;">
+                    <div class="feed-info">
                         <div class="feed-user">
-                            <a class="feed-user-link" href="${profileHref}" data-user-id="${post.user_id || ''}" style="display:inline-flex;align-items:center;gap:0.8rem;text-decoration:none;color:inherit;margin-top: 4px; width: 100%;">
-                                <div class="user-avatar" style="width: 32px; height: 32px; border-radius: 50%; overflow:hidden; display: flex; align-items: center; justify-content: center; background: var(--primary-color); color: white; font-weight: bold; font-size: 0.9rem; flex-shrink: 0;">${avatarHtml}</div>
-                                <div style="display: flex; flex-direction: column; min-width: 0; flex: 1;">
-                                    <span class="username" style="font-size: 0.9rem; font-weight: 600; color: #ffffff; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${userName}</span>
-                                    <span class="post-date" style="font-size: 0.75rem; color: #8f8ea8; margin-top: 2px;">${dateStr}</span>
-                                </div>
+                            <a class="feed-user-link" href="${profileHref}" data-user-id="${post.user_id || ''}" style="display:inline-flex;align-items:center;gap:0.6rem;text-decoration:none;color:inherit;">
+                                <div class="user-avatar" style="overflow:hidden;">${avatarHtml}</div>
+                                <span class="username">${userName}</span>
                             </a>
                         </div>
+                        <p class="feed-desc" title="${post.tag || '#kombin'}">${post.tag || '#kombin'}</p>
                     </div>
                 </div>
             `}).join('');
@@ -360,30 +339,80 @@ export const ui = {
     
     window.addEventListener('DOMContentLoaded', () => {
         const navLinks = document.querySelector('.nav-links');
-        if (navLinks && !document.getElementById('dark-mode-toggle')) {
-            const li = document.createElement('li');
-            li.innerHTML = `<a href="#" id="dark-mode-toggle" title="Tema Değiştir" style="font-size: 1.2rem; cursor:pointer;">${saved === 'dark' ? '☀️' : '🌙'}</a>`;
-            navLinks.appendChild(li);
+        
+        // --- MOBİL MENÜ ENJEKSİYONU VE İLİŞKİLENDİRİLMESİ ---
+        const navContainer = document.querySelector('.nav-container');
+        if (navContainer) {
+            let mobileMenuBtn = navContainer.querySelector('.mobile-menu-btn');
+            if (!mobileMenuBtn) {
+                mobileMenuBtn = document.createElement('div');
+                mobileMenuBtn.className = 'mobile-menu-btn';
+                mobileMenuBtn.innerHTML = '☰';
+                navContainer.appendChild(mobileMenuBtn);
+            }
             
-            // --- BİLDİRİM İKONU ENJEKSİYONU ---
-            const notifLi = document.createElement('li');
-            notifLi.className = 'notification-item';
-            notifLi.innerHTML = `
-                <a href="#" id="notif-toggle" title="Bildirimler" style="font-size: 1.2rem; cursor:pointer; position:relative; display:flex; align-items:center;">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
-                    <span id="notification-badge" style="display: none;">0</span>
-                </a>
-                <div id="notification-dropdown" class="notification-dropdown">
-                    <div style="padding: 1rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
-                        <h4 style="margin: 0; font-size: 1rem;">Bildirimler</h4>
-                        <button id="mark-read-btn" style="background: none; border: none; color: var(--primary-color); cursor: pointer; font-size: 0.75rem; font-weight: 600;">Tümünü Okundu İşaretle</button>
-                    </div>
-                    <div id="notification-list-container">
-                        <div class="spinner" style="margin: 2rem auto;"></div>
+            if (navLinks) {
+                mobileMenuBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const isOpen = navLinks.classList.toggle('mobile-active');
+                    if (isOpen) {
+                        navLinks.style.display = 'flex';
+                        navLinks.style.flexDirection = 'column';
+                        navLinks.style.position = 'absolute';
+                        navLinks.style.top = '64px'; // height of navbar
+                        navLinks.style.left = '0';
+                        navLinks.style.width = '100%';
+                        navLinks.style.backgroundColor = 'var(--surface-color)';
+                        navLinks.style.padding = '1rem';
+                        navLinks.style.boxShadow = 'var(--shadow-md)';
+                        navLinks.style.zIndex = '1000';
+                        navLinks.style.gap = '0.5rem';
+                    } else {
+                        navLinks.style.display = '';
+                        navLinks.style.flexDirection = '';
+                        navLinks.style.position = '';
+                        navLinks.style.top = '';
+                        navLinks.style.left = '';
+                        navLinks.style.width = '';
+                        navLinks.style.backgroundColor = '';
+                        navLinks.style.padding = '';
+                        navLinks.style.boxShadow = '';
+                        navLinks.style.zIndex = '';
+                        navLinks.style.gap = '';
+                    }
+                });
+            }
+        }
+
+        if (navContainer && !document.getElementById('dark-mode-toggle')) {
+            const navActions = document.createElement('div');
+            navActions.className = 'nav-actions';
+            
+            navActions.innerHTML = `
+                <a href="#" id="dark-mode-toggle" title="Tema Değiştir" class="nav-action-btn">${saved === 'dark' ? '☀️' : '🌙'}</a>
+                <div class="notification-item">
+                    <a href="#" id="notif-toggle" title="Bildirimler" class="nav-action-btn">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+                        <span id="notification-badge" style="display: none;">0</span>
+                    </a>
+                    <div id="notification-dropdown" class="notification-dropdown">
+                        <div style="padding: 1rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                            <h4 style="margin: 0; font-size: 1rem; color: var(--text-primary);">Bildirimler</h4>
+                            <button id="mark-read-btn" style="background: none; border: none; color: var(--primary-color); cursor: pointer; font-size: 0.75rem; font-weight: 600;">Tümünü Okundu İşaretle</button>
+                        </div>
+                        <div id="notification-list-container">
+                            <div class="spinner" style="margin: 2rem auto;"></div>
+                        </div>
                     </div>
                 </div>
             `;
-            navLinks.appendChild(notifLi);
+            
+            const mobileBtn = navContainer.querySelector('.mobile-menu-btn');
+            if (mobileBtn) {
+                navContainer.insertBefore(navActions, mobileBtn);
+            } else {
+                navContainer.appendChild(navActions);
+            }
 
             // Bildirimleri Başlat
             setupNotifications();
@@ -454,7 +483,12 @@ async function setupNotifications() {
                 : '';
 
             return `
-                <div class="notification-list-item ${n.is_read ? '' : 'unread'}">
+                <div class="notification-list-item ${n.is_read ? '' : 'unread'}" 
+                     data-id="${n.id}" 
+                     data-type="${n.type}" 
+                     data-actor-id="${n.actor_id}" 
+                     data-actor-name="${encodeURIComponent(actorName)}" 
+                     data-post-id="${n.post_id || ''}">
                     <div class="notification-avatar">${avatarHtml}</div>
                     <div class="notification-content">
                         <b>${actorName}</b> ${actionText}
@@ -486,6 +520,45 @@ async function setupNotifications() {
             listContainer.innerHTML = '<div class="spinner" style="margin: 2rem auto;"></div>';
             const notifications = await api.getNotifications();
             renderNotifications(notifications);
+        }
+    });
+
+    listContainer.addEventListener('click', async (e) => {
+        const item = e.target.closest('.notification-list-item');
+        if (!item) return;
+
+        const notifId = item.getAttribute('data-id');
+        const type = item.getAttribute('data-type');
+        const actorId = item.getAttribute('data-actor-id');
+        const actorName = decodeURIComponent(item.getAttribute('data-actor-name'));
+        const postId = item.getAttribute('data-post-id');
+
+        // 1) Mark single read in background
+        if (item.classList.contains('unread')) {
+            try {
+                await api.markSingleNotificationAsRead(notifId);
+                item.classList.remove('unread');
+                // update badge locally
+                const currentBadgeVal = parseInt(badge.textContent) || 0;
+                if (currentBadgeVal > 1) {
+                    badge.textContent = currentBadgeVal - 1;
+                } else {
+                    badge.style.display = 'none';
+                    badge.classList.remove('pulse-badge');
+                }
+            } catch (err) {
+                console.error("Bildirim okunamadı:", err);
+            }
+        }
+
+        // 2) Close dropdown
+        dropdown.classList.remove('active');
+
+        // 3) Navigate
+        if (type === 'follow') {
+            window.location.href = `profile.html?user=${encodeURIComponent(actorId)}&name=${encodeURIComponent(actorName)}`;
+        } else if ((type === 'like' || type === 'comment') && postId) {
+            window.location.href = `social.html?post=${encodeURIComponent(postId)}`;
         }
     });
 

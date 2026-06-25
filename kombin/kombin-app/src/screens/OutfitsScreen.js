@@ -45,10 +45,13 @@ export default function OutfitsScreen({ route }) {
   const [city, setCity] = useState('');
   const [generating, setGenerating] = useState(false);
   const [result, setResult] = useState(null);
+  const [ratingLoading, setRatingLoading] = useState(false);
+  const [ratingResult, setRatingResult] = useState(null);
 
   const generateOutfit = async () => {
     setGenerating(true);
     setResult(null);
+    setRatingResult(null);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Giriş yapmanız gerekiyor.');
@@ -140,6 +143,24 @@ Lütfen şu formatta yanıt ver:
       Alert.alert('Hata', 'Kombin oluşturulurken bir hata oluştu.');
     } finally {
       setGenerating(false);
+    }
+  };
+
+  const rateCurrentOutfit = async () => {
+    if (!result) return;
+    setRatingLoading(true);
+    setRatingResult(null);
+    try {
+      const { data, error } = await supabase.functions.invoke('rate-outfit', {
+        body: { outfitText: result }
+      });
+      if (error) throw error;
+      setRatingResult(data);
+    } catch (err) {
+      console.log('Rating error:', err);
+      Alert.alert('Hata', 'Kombin puanlanırken bir hata oluştu.');
+    } finally {
+      setRatingLoading(false);
     }
   };
 
@@ -253,6 +274,101 @@ Lütfen şu formatta yanıt ver:
             <LinearGradient colors={['#1a1040', '#0f0c29']} style={styles.resultGradient}>
               <Text style={styles.resultTitle}>🎉 Kombinin Hazır!</Text>
               <Text style={styles.resultText}>{result}</Text>
+
+              {/* Puanlama Kısmı */}
+              <View style={styles.ratingDivider} />
+
+              {!ratingResult && !ratingLoading && (
+                <TouchableOpacity style={styles.rateBtn} onPress={rateCurrentOutfit} activeOpacity={0.85}>
+                  <LinearGradient colors={['#3b82f6', '#1d4ed8']} style={styles.rateBtnGradient}>
+                    <Text style={styles.rateBtnText}>🤖 Kombini Yapay Zeka ile Puanla</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              )}
+
+              {ratingLoading && (
+                <View style={styles.ratingLoadingContainer}>
+                  <ActivityIndicator color="#3b82f6" size="large" />
+                  <Text style={styles.ratingLoadingText}>Yapay zeka kombini inceliyor...</Text>
+                </View>
+              )}
+
+              {ratingResult && (
+                <View style={styles.ratingContainer}>
+                  <Text style={styles.ratingSectionTitle}>📊 Yapay Zeka Analizi</Text>
+                  
+                  {/* Skorbord */}
+                  <View style={styles.scoreRow}>
+                    <View style={styles.scoreCircle}>
+                      <Text style={styles.scoreValue}>{ratingResult.totalScore}</Text>
+                      <Text style={styles.scoreMax}>/100</Text>
+                    </View>
+                    <View style={styles.scoreInfo}>
+                      <Text style={styles.scoreGrade}>
+                        {ratingResult.totalScore >= 90 ? '🏆 Kusursuz Kombin' :
+                         ratingResult.totalScore >= 80 ? '✨ Çok Başarılı' :
+                         ratingResult.totalScore >= 70 ? '👍 İyi Tarz' :
+                         ratingResult.totalScore >= 50 ? '⚖️ Ortalama' : '⚠️ Geliştirilmeli'}
+                      </Text>
+                      <Text style={styles.scoreDesc}>
+                        Kombinin genel uyumu ve tarz bütünlüğü analiz edildi.
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Kategori Puanları */}
+                  <View style={styles.categoriesContainer}>
+                    {/* Renk Uyumu */}
+                    <View style={styles.categoryItem}>
+                      <View style={styles.categoryHeader}>
+                        <Text style={styles.categoryLabel}>🎨 Renk Uyumu</Text>
+                        <Text style={styles.categoryScore}>{ratingResult.categories?.colorHarmony?.score}/100</Text>
+                      </View>
+                      <View style={styles.progressBarBg}>
+                        <View style={[styles.progressBarFill, { width: `${ratingResult.categories?.colorHarmony?.score || 0}%`, backgroundColor: '#3b82f6' }]} />
+                      </View>
+                      <Text style={styles.categoryComment}>{ratingResult.categories?.colorHarmony?.comment}</Text>
+                    </View>
+
+                    {/* Tarz Bütünlüğü */}
+                    <View style={styles.categoryItem}>
+                      <View style={styles.categoryHeader}>
+                        <Text style={styles.categoryLabel}>📐 Tarz Bütünlüğü</Text>
+                        <Text style={styles.categoryScore}>{ratingResult.categories?.styleCohesion?.score}/100</Text>
+                      </View>
+                      <View style={styles.progressBarBg}>
+                        <View style={[styles.progressBarFill, { width: `${ratingResult.categories?.styleCohesion?.score || 0}%`, backgroundColor: '#a855f7' }]} />
+                      </View>
+                      <Text style={styles.categoryComment}>{ratingResult.categories?.styleCohesion?.comment}</Text>
+                    </View>
+
+                    {/* Ortam/Hava Uygunluğu */}
+                    <View style={styles.categoryItem}>
+                      <View style={styles.categoryHeader}>
+                        <Text style={styles.categoryLabel}>🌤️ Hava/Ortam Uyumu</Text>
+                        <Text style={styles.categoryScore}>{ratingResult.categories?.occasionSuitability?.score}/100</Text>
+                      </View>
+                      <View style={styles.progressBarBg}>
+                        <View style={[styles.progressBarFill, { width: `${ratingResult.categories?.occasionSuitability?.score || 0}%`, backgroundColor: '#10b981' }]} />
+                      </View>
+                      <Text style={styles.categoryComment}>{ratingResult.categories?.occasionSuitability?.comment}</Text>
+                    </View>
+                  </View>
+
+                  {/* Öneriler */}
+                  {ratingResult.suggestions && ratingResult.suggestions.length > 0 && (
+                    <View style={styles.suggestionsContainer}>
+                      <Text style={styles.suggestionsTitle}>💡 Stil Önerileri</Text>
+                      {ratingResult.suggestions.map((suggestion, idx) => (
+                        <View key={idx} style={styles.suggestionRow}>
+                          <Text style={styles.suggestionBullet}>✨</Text>
+                          <Text style={styles.suggestionText}>{suggestion}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                </View>
+              )}
             </LinearGradient>
           </View>
         )}
@@ -320,4 +436,32 @@ const styles = StyleSheet.create({
   resultGradient: { padding: 20 },
   resultTitle: { fontSize: 18, fontWeight: '800', color: '#a855f7', marginBottom: 14 },
   resultText: { color: '#e5e7eb', fontSize: 15, lineHeight: 24 },
+  ratingDivider: { height: 1, backgroundColor: 'rgba(255,255,255,0.1)', marginVertical: 20 },
+  rateBtn: { borderRadius: 12, overflow: 'hidden', marginTop: 10 },
+  rateBtnGradient: { paddingVertical: 14, alignItems: 'center', justifyContent: 'center' },
+  rateBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  ratingLoadingContainer: { alignItems: 'center', paddingVertical: 15 },
+  ratingLoadingText: { color: '#9ca3af', fontSize: 14, marginTop: 10 },
+  ratingContainer: { marginTop: 10 },
+  ratingSectionTitle: { fontSize: 16, fontWeight: '800', color: '#fff', marginBottom: 16 },
+  scoreRow: { flexDirection: 'row', alignItems: 'center', gap: 16, backgroundColor: 'rgba(255,255,255,0.04)', padding: 14, borderRadius: 14, marginBottom: 20 },
+  scoreCircle: { width: 70, height: 70, borderRadius: 35, backgroundColor: 'rgba(168,85,247,0.15)', borderWidth: 2, borderColor: '#a855f7', alignItems: 'center', justifyContent: 'center' },
+  scoreValue: { color: '#fff', fontSize: 24, fontWeight: '800' },
+  scoreMax: { color: '#a5b4fc', fontSize: 10, marginTop: -2 },
+  scoreInfo: { flex: 1 },
+  scoreGrade: { color: '#fff', fontSize: 15, fontWeight: '700', marginBottom: 4 },
+  scoreDesc: { color: '#9ca3af', fontSize: 12, lineHeight: 16 },
+  categoriesContainer: { gap: 16, marginBottom: 20 },
+  categoryItem: { backgroundColor: 'rgba(255,255,255,0.03)', padding: 12, borderRadius: 12 },
+  categoryHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
+  categoryLabel: { color: '#e5e7eb', fontSize: 13, fontWeight: '600' },
+  categoryScore: { color: '#fff', fontSize: 13, fontWeight: '700' },
+  progressBarBg: { height: 6, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 3, overflow: 'hidden', marginBottom: 8 },
+  progressBarFill: { height: '100%', borderRadius: 3 },
+  categoryComment: { color: '#9ca3af', fontSize: 12, lineHeight: 16 },
+  suggestionsContainer: { backgroundColor: 'rgba(168,85,247,0.05)', padding: 14, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(168,85,247,0.15)' },
+  suggestionsTitle: { fontSize: 14, fontWeight: '700', color: '#fff', marginBottom: 10 },
+  suggestionRow: { flexDirection: 'row', gap: 8, marginBottom: 8 },
+  suggestionBullet: { fontSize: 12 },
+  suggestionText: { flex: 1, color: '#e5e7eb', fontSize: 13, lineHeight: 18 },
 });

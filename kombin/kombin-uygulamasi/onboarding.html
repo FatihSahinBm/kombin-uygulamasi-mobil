@@ -7,6 +7,34 @@
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/components.css">
     <link rel="stylesheet" href="css/form.css">
+    <style>
+        @media (max-width: 600px) {
+            .glass-panel {
+                padding: 1.5rem !important;
+            }
+            .header-center {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 1rem;
+            }
+            .header-center a {
+                position: static !important;
+                align-self: flex-start;
+                margin-bottom: 0.5rem;
+            }
+            .main-title {
+                font-size: 1.8rem !important;
+            }
+            .progress-container {
+                margin-top: 1rem;
+                margin-bottom: 1.5rem !important;
+            }
+            .action-area {
+                margin-top: 2rem !important;
+            }
+        }
+    </style>
     <script type="module">
         import { auth } from './js/auth.js';
         auth.requireAuth();

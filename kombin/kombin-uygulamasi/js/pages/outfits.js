@@ -24,14 +24,6 @@ export const outfits = {
         const cityDropdown = document.getElementById('outfit-city');
         if (cityDropdown) cityDropdown.value = storedCity;
         
-        // URL'den varsayılan tarzı al ve seç
-        const urlParams = new URLSearchParams(window.location.search);
-        const styleParam = urlParams.get('style') || urlParams.get('defaultStyle');
-        const styleSelect = document.getElementById('style-select');
-        if (styleSelect && styleParam) {
-            styleSelect.value = styleParam;
-        }
-        
         this.renderHistory();
 
         if (form) {
@@ -43,8 +35,9 @@ export const outfits = {
                 generateBtn.disabled = true;
                 
                 const style = document.getElementById('style-select').value;
-                const budgetMin = document.getElementById('budget-min')?.value || 0;
-                const budgetMax = document.getElementById('budget-max')?.value || 5000;
+                const budgetEnabled = document.getElementById('budget-enabled')?.checked || false;
+                const budgetMin = budgetEnabled ? (document.getElementById('budget-min')?.value || 0) : 0;
+                const budgetMax = budgetEnabled ? (document.getElementById('budget-max')?.value || 0) : 0;
                 const source = document.getElementById('outfit-source')?.value || 'wardrobe';
                 const colorPalette = document.getElementById('outfit-color-palette')?.value || '';
                 
@@ -106,18 +99,71 @@ export const outfits = {
                     
                     if (source === 'external' || source === 'mixed') {
                         const aiResponse = await api.generateOutfitFromAI(params);
+
+                        // Fiyat kontrolü ve Gemini ile dinamik fiyat tahmini hazırlığı
+                        const itemsWithAIPrice = [];
+                        const itemsNeedEstimation = [];
+                        
+                        const checkAndPrepare = (name, type, aiPrice) => {
+                            if (!name) return;
+                            const parsedPrice = aiPrice ? parseInt(aiPrice, 10) : 0;
+                            if (parsedPrice > 0) {
+                                itemsWithAIPrice.push({ name, type, price: parsedPrice });
+                            } else {
+                                itemsNeedEstimation.push({ name, type });
+                            }
+                        };
+                        
+                        checkAndPrepare(aiResponse.top, "Üst Giyim", aiResponse.top_price);
+                        checkAndPrepare(aiResponse.bottom, "Alt Giyim", aiResponse.bottom_price);
+                        checkAndPrepare(aiResponse.shoes, "Ayakkabı", aiResponse.shoes_price);
+                        if (aiResponse.outerwear) checkAndPrepare(aiResponse.outerwear, "Dış Giyim", aiResponse.outerwear_price);
+                        if (aiResponse.accessory) checkAndPrepare(aiResponse.accessory, "Aksesuar", aiResponse.accessory_price);
+                        
+                        let estimatedPricesMap = {};
+                        if (itemsNeedEstimation.length > 0) {
+                            try {
+                                const budgetCap = parseInt(budgetMax, 10) || 0;
+                                estimatedPricesMap = await api.estimateItemPrices(itemsNeedEstimation, budgetCap);
+                            } catch (e) {
+                                console.warn("Gemini ile dinamik fiyat tahmini yapılamadı:", e);
+                            }
+                        }
+                        
+                        const getFinalPrice = (name, type) => {
+                            // 1. Edge Function'dan gelen fiyat varsa kullan
+                            const aiMatched = itemsWithAIPrice.find(it => it.name === name);
+                            if (aiMatched) return aiMatched.price;
+                            
+                            // 2. Gemini'den gelen dinamik fiyat varsa kullan
+                            if (estimatedPricesMap[name]) return estimatedPricesMap[name];
+                            
+                            // 3. Hiçbiri yoksa statik aralık fallback (güvenlik ağı)
+                            const ranges = {
+                                'Üst Giyim':  [400, 1500],
+                                'Alt Giyim':  [700, 2500],
+                                'Ayakkabı':   [1500, 4500],
+                                'Dış Giyim':  [2000, 8000],
+                                'Aksesuar':   [400, 2000]
+                            };
+                            const [min, max] = ranges[type] || [300, 1000];
+                            const budgetCap = parseInt(budgetMax, 10);
+                            const effectiveMax = (budgetCap > 0 && budgetCap < max) ? budgetCap : max;
+                            return Math.round((Math.random() * (effectiveMax - min) + min) / 50) * 50;
+                        };
+
                         result = {
                             title: "✨ Yapay Zeka Önerisi",
                             description: aiResponse.reasoning || "Bu kombin tamamen sizin profilinize ve kriterlerinize göre tasarlandı.",
                             items: [
-                                { name: aiResponse.top, type: "Üst Giyim", source: "external", price: "AI", _scraped: false, image_prompt: aiResponse.top_prompt },
-                                { name: aiResponse.bottom, type: "Alt Giyim", source: "external", price: "AI", _scraped: false, image_prompt: aiResponse.bottom_prompt },
-                                { name: aiResponse.shoes, type: "Ayakkabı", source: "external", price: "AI", _scraped: false, image_prompt: aiResponse.shoes_prompt }
+                                { name: aiResponse.top, type: "Üst Giyim", source: "external", price: getFinalPrice(aiResponse.top, "Üst Giyim"), _scraped: false, image_prompt: aiResponse.top_prompt },
+                                { name: aiResponse.bottom, type: "Alt Giyim", source: "external", price: getFinalPrice(aiResponse.bottom, "Alt Giyim"), _scraped: false, image_prompt: aiResponse.bottom_prompt },
+                                { name: aiResponse.shoes, type: "Ayakkabı", source: "external", price: getFinalPrice(aiResponse.shoes, "Ayakkabı"), _scraped: false, image_prompt: aiResponse.shoes_prompt }
                             ]
                         };
                         // Dış giyim ve aksesuar AI tarafından dönerse ekle
-                        if (aiResponse.outerwear) result.items.push({ name: aiResponse.outerwear, type: "Dış Giyim", source: "external", price: "AI", image_prompt: aiResponse.outerwear_prompt });
-                        if (aiResponse.accessory) result.items.push({ name: aiResponse.accessory, type: "Aksesuar", source: "external", price: "AI", image_prompt: aiResponse.accessory_prompt });
+                        if (aiResponse.outerwear) result.items.push({ name: aiResponse.outerwear, type: "Dış Giyim", source: "external", price: getFinalPrice(aiResponse.outerwear, "Dış Giyim"), image_prompt: aiResponse.outerwear_prompt });
+                        if (aiResponse.accessory) result.items.push({ name: aiResponse.accessory, type: "Aksesuar", source: "external", price: getFinalPrice(aiResponse.accessory, "Aksesuar"), image_prompt: aiResponse.accessory_prompt });
                         
                         // Mixed modunda fixed (gardırop) öğelerini dışarıdan değil, gardıroptan geldiğini işaretleyelim
                         if (source === 'mixed' && fixedItems) {
@@ -140,7 +186,7 @@ export const outfits = {
                     
                     // DOM API kullanarak UI render etme numarasını kullanalım:
                     // Ama displayArea farklı element, bu yüzden renderLocal yapalım
-                    this.renderLocalOutfit(displayArea, result);
+                    this.renderLocalOutfit(displayArea, result, budgetMax, userGender);
                     
                     // Geçmişe ekle
                     this.saveToHistory(result);
@@ -189,13 +235,24 @@ export const outfits = {
 
         if (btnShareSocial) {
             btnShareSocial.addEventListener('click', async () => {
-                if (!this.currentOutfit) return;
+                if (!this.currentOutfit || !this.currentOutfit.items) return;
                 
-                btnShareSocial.innerHTML = "Paylaşılıyor...";
+                btnShareSocial.innerHTML = "Görseller Hazırlanıyor...";
                 btnShareSocial.disabled = true;
                 
                 try {
+                    // Create beautiful collage image
+                    const blob = await this.createOutfitCollage(this.currentOutfit.items);
+                    if (!blob) throw new Error("Kolaj oluşturulamadı.");
+
+                    btnShareSocial.innerHTML = "Yükleniyor...";
+                    const file = new File([blob], `outfit-${Date.now()}.jpg`, { type: 'image/jpeg' });
+                    const imageUrl = await api.uploadImage(file, 'social_images');
+                    if (!imageUrl) throw new Error("Görsel yüklenemedi.");
+
+                    btnShareSocial.innerHTML = "Paylaşılıyor...";
                     await api.shareOutfit({
+                        image: imageUrl,
                         style: this.currentOutfit.style || "AIKombin",
                         description: this.currentOutfit.description || this.currentOutfit.title
                     });
@@ -204,6 +261,10 @@ export const outfits = {
                 } catch (e) {
                     btnShareSocial.innerHTML = "Hata Oluştu!";
                     console.error(e);
+                    setTimeout(() => {
+                        btnShareSocial.innerHTML = "🌟 Sosyal Akışta Paylaş";
+                        btnShareSocial.disabled = false;
+                    }, 2000);
                 }
             });
         }
@@ -381,8 +442,33 @@ export const outfits = {
         }).join('');
     },
 
-    renderLocalOutfit(container, outfit) {
+    renderLocalOutfit(container, outfit, budgetMax = 0, userGender = '') {
         const uniqueId = Date.now();
+
+        // Cinsiyete göre arama anahtar kelimesi belirle
+        const genderKeyword = (() => {
+            const g = (userGender || '').toLowerCase();
+            if (g.includes('erkek') || g === 'male' || g === 'man') return 'erkek';
+            if (g.includes('kadın') || g.includes('kız') || g === 'female' || g === 'woman') return 'kız';
+            return '';
+        })();
+
+        // Google Shopping URL oluşturucu
+        const buildShoppingUrl = (itemName) => {
+            const max = parseInt(budgetMax, 10);
+            // Türkçe sayı formatı: 1500 → 1.500
+            const formatTL = (n) => n.toLocaleString('tr-TR');
+
+            let searchTerm;
+            if (max > 0 && max < 99999) {
+                // ₺1.500 ve altı {ürün} {cinsiyet}
+                searchTerm = `₺${formatTL(max)} ve altı ${itemName}${genderKeyword ? ' ' + genderKeyword : ''}`;
+            } else {
+                searchTerm = genderKeyword ? `${itemName} ${genderKeyword}` : itemName;
+            }
+            return `https://www.google.com/search?q=${encodeURIComponent(searchTerm)}&udm=28`;
+        };
+
         const visualItems = outfit.items.map((item, idx) => {
             const imgId = `ai-img-${uniqueId}-${idx}`;
             const imgUrl = item.image_url || ui.getOutfitImage(item.name, item.type, item.image_prompt);
@@ -395,14 +481,26 @@ export const outfits = {
                 const scrapedBadge = item._scraped 
                     ? `<span style="font-size:0.6rem; background:#10b981; color:white; padding:0.15rem 0.3rem; border-radius:3px;">Gerçek Fiyat</span>` 
                     : `<span style="font-size:0.6rem; background:#f59e0b; color:white; padding:0.15rem 0.3rem; border-radius:3px;">Tahmini</span>`;
+
+                // Gerçek ürün URL'si varsa onu kullan, yoksa Google Shopping araması yap
+                const buyUrl = (item.productUrl && item.productUrl !== '#')
+                    ? item.productUrl
+                    : buildShoppingUrl(item.name);
+
+                // Fiyat gösterimi: sayısal ise formatı şekillendirip göster, değilse gizle
+                const priceNum = parseInt(item.price, 10);
+                const priceHtml = !isNaN(priceNum) && priceNum > 0
+                    ? `<span style="font-weight:bold; color:var(--primary-color);">${priceNum.toLocaleString('tr-TR')} TL</span>`
+                    : '';
+
                 actionHtml = `
                 <div style="display:flex; flex-direction:column; align-items:flex-end; gap:0.4rem;">
                     <div style="display:flex; align-items:center; gap:0.4rem;">
                         ${scrapedBadge}
-                        <span style="font-weight:bold; color:var(--primary-color);">${item.price} TL</span>
+                        ${priceHtml}
                     </div>
                     ${storeHtml}
-                    <a href="${item.productUrl || '#'}" target="_blank" class="btn btn-primary btn-sm" style="padding: 0.4rem 0.6rem; font-size: 0.8rem; text-decoration:none;">
+                    <a href="${buyUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm" style="padding: 0.4rem 0.6rem; font-size: 0.8rem; text-decoration:none;">
                         🛒 Satın Al
                     </a>
                 </div>`;
@@ -474,6 +572,7 @@ export const outfits = {
                         .then(dataUrl => {
                             if (dataUrl) {
                                 wrapper.innerHTML = `<img src="${dataUrl}" style="width:70px; height:70px; object-fit:cover; border-radius:8px;" alt="AI Görsel">`;
+                                item.image_url = dataUrl;
                             } else {
                                 wrapper.innerHTML = '<span style="font-size:2rem;">👕</span>';
                             }
@@ -486,7 +585,11 @@ export const outfits = {
                     const img = new Image();
                     img.referrerPolicy = 'no-referrer';
                     img.style.cssText = 'width:70px; height:70px; object-fit:cover; border-radius:8px;';
-                    img.onload = () => { wrapper.innerHTML = ''; wrapper.appendChild(img); };
+                    img.onload = () => { 
+                        wrapper.innerHTML = ''; 
+                        wrapper.appendChild(img); 
+                        item.image_url = imgUrl;
+                    };
                     img.onerror = () => { wrapper.innerHTML = '<span style="font-size:2rem;">👕</span>'; };
                     img.src = imgUrl;
                 }
@@ -494,7 +597,11 @@ export const outfits = {
                 // Gardırop resmi veya başka URL - doğrudan yükle
                 const img = new Image();
                 img.style.cssText = 'width:70px; height:70px; object-fit:cover; border-radius:8px;';
-                img.onload = () => { wrapper.innerHTML = ''; wrapper.appendChild(img); };
+                img.onload = () => { 
+                    wrapper.innerHTML = ''; 
+                    wrapper.appendChild(img); 
+                    item.image_url = imgUrl;
+                };
                 img.onerror = () => { wrapper.innerHTML = '<span style="font-size:2rem;">👕</span>'; };
                 img.src = imgUrl;
             }
@@ -524,6 +631,102 @@ export const outfits = {
                     e.target.textContent = "❌";
                 }
             });
+        });
+    },
+
+    async createOutfitCollage(items) {
+        const canvas = document.createElement('canvas');
+        canvas.width = 600;
+        canvas.height = 600;
+        const ctx = canvas.getContext('2d');
+
+        // Fill background
+        ctx.fillStyle = '#F4F7F6';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Load all images
+        const loadImage = (src) => {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+                img.onload = () => resolve(img);
+                img.onerror = () => resolve(null);
+                img.src = src;
+            });
+        };
+
+        const imagePromises = items.map(item => {
+            if (item.image_url) {
+                return loadImage(item.image_url);
+            }
+            return Promise.resolve(null);
+        });
+
+        const images = await Promise.all(imagePromises);
+
+        const colCount = items.length || 3;
+        const padding = 15;
+        const colWidth = (canvas.width - padding * (colCount + 1)) / colCount;
+        const colHeight = canvas.height - padding * 2;
+
+        for (let i = 0; i < colCount; i++) {
+            const img = images[i];
+            const x = padding + i * (colWidth + padding);
+            const y = padding;
+
+            // Draw card background
+            ctx.fillStyle = '#FFFFFF';
+            ctx.beginPath();
+            if (ctx.roundRect) {
+                ctx.roundRect(x, y, colWidth, colHeight, 12);
+            } else {
+                ctx.rect(x, y, colWidth, colHeight);
+            }
+            ctx.fill();
+
+            if (img) {
+                ctx.save();
+                ctx.beginPath();
+                if (ctx.roundRect) {
+                    ctx.roundRect(x + 10, y + 10, colWidth - 20, colHeight - 100, 8);
+                } else {
+                    ctx.rect(x + 10, y + 10, colWidth - 20, colHeight - 100);
+                }
+                ctx.clip();
+                
+                const scale = Math.max((colWidth - 20) / img.width, (colHeight - 100) / img.height);
+                const w = img.width * scale;
+                const h = img.height * scale;
+                const dx = x + 10 + ((colWidth - 20) - w) / 2;
+                const dy = y + 10 + ((colHeight - 100) - h) / 2;
+                ctx.drawImage(img, dx, dy, w, h);
+                ctx.restore();
+            } else {
+                ctx.fillStyle = '#a0aec0';
+                ctx.font = '3rem sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                const emoji = items[i]?.type?.includes('Üst') ? '👕' : items[i]?.type?.includes('Alt') ? '👖' : '👟';
+                ctx.fillText(emoji, x + colWidth / 2, y + (colHeight - 100) / 2);
+            }
+
+            // Draw text details
+            ctx.fillStyle = '#2D3748';
+            ctx.font = 'bold 12px sans-serif';
+            ctx.textAlign = 'center';
+            let name = items[i]?.name || '';
+            if (name.length > 16) name = name.substring(0, 14) + '...';
+            ctx.fillText(name, x + colWidth / 2, y + colHeight - 55);
+
+            ctx.fillStyle = '#718096';
+            ctx.font = '10px sans-serif';
+            ctx.fillText(items[i]?.type || '', x + colWidth / 2, y + colHeight - 30);
+        }
+
+        return new Promise((resolve) => {
+            canvas.toBlob((blob) => {
+                resolve(blob);
+            }, 'image/jpeg', 0.9);
         });
     },
 

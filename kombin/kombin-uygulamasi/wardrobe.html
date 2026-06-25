@@ -4,100 +4,106 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kombin.AI | Gardırobum</title>
+    <link rel="icon" type="image/jpeg" href="logo.jpg">
     <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/animations.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script type="module">
         import { auth } from './js/auth.js';
         auth.requireAuth();
         window.logout = () => auth.logout();
     </script>
+    <style>
+        #cropper-wrapper {
+            position: relative;
+            max-width: 100%;
+            max-height: 380px;
+            display: inline-block;
+            overflow: hidden;
+            background: #000;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            user-select: none;
+            touch-action: none;
+        }
+        #item-full-preview {
+            display: block;
+            max-width: 100%;
+            max-height: 380px;
+            object-fit: contain;
+            user-select: none;
+            pointer-events: none;
+        }
+        #crop-box {
+            position: absolute;
+            border: 2px dashed var(--primary-color);
+            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.6);
+            cursor: move;
+            box-sizing: border-box;
+            z-index: 10;
+        }
+        .crop-handle {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background: #ffffff;
+            border: 2px solid var(--primary-color);
+            border-radius: 50%;
+            box-sizing: border-box;
+            z-index: 11;
+            transition: transform 0.1s ease;
+        }
+        .crop-handle:hover {
+            transform: scale(1.3);
+        }
+        .crop-handle.nw { top: -6px; left: -6px; cursor: nwse-resize; }
+        .crop-handle.ne { top: -6px; right: -6px; cursor: nesw-resize; }
+        .crop-handle.sw { bottom: -6px; left: -6px; cursor: nesw-resize; }
+        .crop-handle.se { bottom: -6px; right: -6px; cursor: nwse-resize; }
+    </style>
 </head>
 <body>
-    <!-- Üst Navbar (Masaüstü için) -->
-    <nav class="navbar navbar-dark">
+    <nav class="navbar">
         <div class="nav-container">
-            <div class="logo">Kombin.AI</div>
+            <a href="dashboard.html" class="logo" style="display: flex; align-items: center; gap: 8px;">
+                <img src="logo.jpg" alt="Logo" style="width: 32px; height: 32px; object-fit: cover; border-radius: 8px;">
+                <span>Kombin.AI</span>
+            </a>
             <ul class="nav-links">
                 <li><a href="dashboard.html">Ana Sayfa</a></li>
-                <li><a href="wardrobe.html" class="active">Gardırobum</a></li>
                 <li><a href="outfits.html">Kombin Oluştur</a></li>
                 <li><a href="social.html">Sosyal Akış</a></li>
+                <li><a href="wardrobe.html" class="active">Gardırobum</a></li>
                 <li><a href="profile.html">Profil</a></li>
-                <li><a href="#" onclick="logout(); return false;" style="color: var(--accent-color);">Çıkış Yap</a></li>
+                <li><a href="#" class="nav-logout" onclick="logout(); return false;">Çıkış Yap</a></li>
             </ul>
         </div>
     </nav>
 
-    <div class="app-wardrobe-container">
-        <div class="app-wardrobe-wrapper">
-            <!-- Header -->
-            <header class="app-wardrobe-header">
-                <h1 class="app-wardrobe-title">👕 Gardırobum</h1>
-                <div class="app-wardrobe-subtitle" id="wardrobe-count">0 kıyafet</div>
-            </header>
-
-            <!-- Search Bar -->
-            <div class="app-search-bar">
-                <input type="text" id="wardrobe-search" class="app-search-input" placeholder="Kıyafet ara...">
+    <main class="main-container fade-in">
+        <header style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem;">
+            <div>
+                <h1 class="main-title" style="font-size: 2rem;">👕 Gardırobum</h1>
+                <p class="subtitle" style="margin-top: 5px;">Dijital kıyafet dolabını baştan yarat</p>
             </div>
-
-            <!-- Categories -->
-            <div class="app-category-scroll" id="category-chips-container">
-                <div class="app-category-chip active" data-category="all">
-                    <span class="app-category-chip-text">Tümü</span>
-                </div>
-                <div class="app-category-chip" data-category="ust">
-                    <span class="app-category-chip-text">Üst Giyim</span>
-                </div>
-                <div class="app-category-chip" data-category="alt">
-                    <span class="app-category-chip-text">Alt Giyim</span>
-                </div>
-                <div class="app-category-chip" data-category="ayakkabi">
-                    <span class="app-category-chip-text">Ayakkabı</span>
-                </div>
-                <div class="app-category-chip" data-category="dis_giyim">
-                    <span class="app-category-chip-text">Dış Giyim</span>
-                </div>
-                <div class="app-category-chip" data-category="aksesuar">
-                    <span class="app-category-chip-text">Aksesuar</span>
-                </div>
+            <div style="display: flex; gap: 10px;">
+                <select id="wardrobe-filter" class="form-control" style="width: auto; padding: 0.5rem; background: var(--bg-color);">
+                    <option value="all">Tüm Gardırop</option>
+                    <option value="ust">Sadece Üst Giyim</option>
+                    <option value="alt">Sadece Alt Giyim</option>
+                    <option value="dis_giyim">Sadece Dış Giyim</option>
+                    <option value="ayakkabi">Sadece Ayakkabı</option>
+                    <option value="aksesuar">Sadece Aksesuar</option>
+                </select>
+                <button class="btn btn-primary" id="add-wardrobe-btn">+ Yeni Kıyafet Ekle</button>
             </div>
+        </header>
 
-            <!-- Liste -->
-            <main class="app-wardrobe-grid" id="wardrobe-list">
-                <div class="spinner" style="margin: 3rem auto; grid-column: 1 / -1;"></div>
-            </main>
+        <!-- Liste -->
+        <div id="wardrobe-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem; min-height: 40vh;">
+            <div class="spinner" style="margin: 3rem auto; grid-column: 1 / -1;"></div>
         </div>
-    </div>
-
-    <!-- FAB (Floating Action Button) -->
-    <button class="app-fab" id="add-wardrobe-btn" title="Yeni Kıyafet Ekle">
-        <span class="app-fab-text">+</span>
-    </button>
-
-    <!-- Alt Tab Bar (Mobil için) -->
-    <div class="app-bottom-nav">
-        <a href="dashboard.html" class="app-bottom-nav-item">
-            <span class="app-bottom-nav-icon">🏠</span>
-            <span>Ana Sayfa</span>
-        </a>
-        <a href="wardrobe.html" class="app-bottom-nav-item active">
-            <span class="app-bottom-nav-icon">👕</span>
-            <span>Gardırop</span>
-        </a>
-        <a href="outfits.html" class="app-bottom-nav-item">
-            <span class="app-bottom-nav-icon">✨</span>
-            <span>Kombin</span>
-        </a>
-        <a href="social.html" class="app-bottom-nav-item">
-            <span class="app-bottom-nav-icon">🔥</span>
-            <span>Sosyal</span>
-        </a>
-        <a href="profile.html" class="app-bottom-nav-item">
-            <span class="app-bottom-nav-icon">👤</span>
-            <span>Profil</span>
-        </a>
-    </div>
+    </main>
 
     <!-- Çoklu Kıyafet Algılama Modalı -->
     <div class="modal" id="multi-detect-modal">
@@ -108,7 +114,7 @@
             </div>
             <div class="modal-body" style="text-align: center;">
                 <div style="margin-bottom: 1.2rem;">
-                    <img id="multi-detect-preview" src="" alt="Yüklenen Fotoğraf" style="max-width: 100%; max-height: 220px; border-radius: 12px; object-fit: contain; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+                     <img id="multi-detect-preview" src="" alt="Yüklenen Fotoğraf" style="max-width: 100%; max-height: 220px; border-radius: 12px; object-fit: contain; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
                 </div>
                 <p style="color: var(--text-muted); margin-bottom: 0.8rem; font-size: 0.9rem;">
                     Gardırobuna eklemek istediğin parçaları <strong>seç</strong>, ardından analiz butonuna bas.<br>
@@ -137,6 +143,41 @@
             <div class="modal-body">
                 <form id="wardrobe-form">
                     <input type="hidden" id="editItemId" value="">
+                    
+                    <!-- Görsel Önizleme Bölümü (Kullanıcı Kırpma Arayüzü) -->
+                    <div id="wardrobe-image-preview-container" style="display: none; flex-direction: column; gap: 1.5rem; justify-content: center; align-items: center; background: rgba(99,102,241,0.03); padding: 1.2rem; border-radius: 16px; border: 1px solid var(--border-color); width: 100%; box-sizing: border-box; margin-bottom: 1.5rem;">
+                        
+                        <div style="width: 100%; display: flex; flex-direction: column; align-items: center; gap: 0.5rem;">
+                            <span style="font-size: 0.8rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 4px;">
+                                🎯 Görselin Kırpılacak Bölgesini Seçin
+                            </span>
+                            
+                            <!-- Kırpma Alanı Konteyneri -->
+                            <div id="cropper-wrapper">
+                                <img id="item-full-preview" src="">
+                                <div id="crop-box">
+                                    <div class="crop-handle nw"></div>
+                                    <div class="crop-handle ne"></div>
+                                    <div class="crop-handle sw"></div>
+                                    <div class="crop-handle se"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Önizleme ve Yardımcı Bilgi -->
+                        <div style="display: flex; gap: 1.5rem; align-items: center; justify-content: center; width: 100%; flex-wrap: wrap;">
+                            <div style="text-align: center; flex: 1; min-width: 100px; display: flex; flex-direction: column; align-items: center;">
+                                <span style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.5rem; text-transform: uppercase;">Gardırop Önizlemesi</span>
+                                <img id="item-cropped-preview" src="" style="width: 100px; height: 125px; object-fit: cover; aspect-ratio: 4/5; border-radius: 8px; border: 2px solid var(--primary-color); background: white; box-shadow: var(--shadow-md);">
+                            </div>
+                            <div style="flex: 2; min-width: 180px;">
+                                <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0; line-height: 1.4;">
+                                    💡 <strong>İpucu:</strong> Resmin üzerindeki mavi kesikli kutuyu sürükleyip köşelerinden boyutlandırarak kıyafetin gardıropta nasıl görüneceğini belirleyebilirsiniz.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <div class="form-group">
                         <label>Parça Türü/Markası (Örn: Siyah Boğazlı Kazak)</label>
                         <input type="text" id="itemName" required class="form-control" placeholder="Levi's Tişört, Deri Ceket vb.">
@@ -170,27 +211,71 @@
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                             <div id="aiFitContainer" style="display: none;">
                                 <label style="font-size: 0.8rem;">Kalıp (Fit)</label>
-                                <input type="text" id="aiFit" class="form-control" style="padding: 0.4rem; font-size: 0.85rem;" placeholder="örn: Regular">
+                                <select id="aiFit" class="form-control" style="padding: 0.4rem; font-size: 0.85rem;">
+                                    <option value="">— Seçin —</option>
+                                    <option value="Oversize">Oversize</option>
+                                    <option value="Slim Fit">Slim Fit</option>
+                                    <option value="Regular">Regular</option>
+                                    <option value="Bol Kesim">Bol Kesim</option>
+                                    <option value="Baggy (Çok Bol)">Baggy (Çok Bol)</option>
+                                    <option value="Skinny">Skinny</option>
+                                </select>
                             </div>
                             <div id="aiLegLengthContainer" style="display: none;">
                                 <label style="font-size: 0.8rem;">Paça (Leg Length)</label>
-                                <input type="text" id="aiLegLength" class="form-control" style="padding: 0.4rem; font-size: 0.85rem;" placeholder="örn: Bilek Boy">
+                                <select id="aiLegLength" class="form-control" style="padding: 0.4rem; font-size: 0.85rem;">
+                                    <option value="">— Seçin —</option>
+                                    <option value="Tam Boy">Tam Boy</option>
+                                    <option value="Bilek Boy">Bilek Boy</option>
+                                    <option value="Kısa (Cropped)">Kısa (Cropped)</option>
+                                    <option value="Şort Boyu">Şort Boyu</option>
+                                </select>
                             </div>
                             <div id="aiNecklineContainer" style="display: none;">
                                 <label style="font-size: 0.8rem;">Yaka (Neckline)</label>
-                                <input type="text" id="aiNeckline" class="form-control" style="padding: 0.4rem; font-size: 0.85rem;" placeholder="örn: V Yaka">
+                                <select id="aiNeckline" class="form-control" style="padding: 0.4rem; font-size: 0.85rem;">
+                                    <option value="">— Seçin —</option>
+                                    <option value="V Yaka">V Yaka</option>
+                                    <option value="Bisiklet Yaka">Bisiklet Yaka</option>
+                                    <option value="Polo Yaka">Polo Yaka</option>
+                                    <option value="Balıkçı Yaka">Balıkçı Yaka</option>
+                                    <option value="Kapüşonlu">Kapüşonlu</option>
+                                </select>
                             </div>
                             <div id="aiSleeveContainer" style="display: none;">
                                 <label style="font-size: 0.8rem;">Kol (Sleeve)</label>
-                                <input type="text" id="aiSleeve" class="form-control" style="padding: 0.4rem; font-size: 0.85rem;" placeholder="örn: Kısa Kol">
+                                <select id="aiSleeve" class="form-control" style="padding: 0.4rem; font-size: 0.85rem;">
+                                    <option value="">— Seçin —</option>
+                                    <option value="Kısa Kol">Kısa Kol</option>
+                                    <option value="Uzun Kol">Uzun Kol</option>
+                                    <option value="Kolsuz">Kolsuz</option>
+                                </select>
                             </div>
                             <div id="aiTextureContainer" style="display: none;">
                                 <label style="font-size: 0.8rem;">Doku (Texture)</label>
-                                <input type="text" id="aiTexture" class="form-control" style="padding: 0.4rem; font-size: 0.85rem;" placeholder="örn: Pamuk">
+                                <select id="aiTexture" class="form-control" style="padding: 0.4rem; font-size: 0.85rem;">
+                                    <option value="">— Seçin —</option>
+                                    <option value="Kot (Denim)">Kot (Denim)</option>
+                                    <option value="Deri">Deri</option>
+                                    <option value="Örgü (Triko)">Örgü (Triko)</option>
+                                    <option value="Pamuk">Pamuk</option>
+                                    <option value="İpek">İpek</option>
+                                    <option value="Saten">Saten</option>
+                                    <option value="Keten">Keten</option>
+                                    <option value="Yün">Yün</option>
+                                </select>
                             </div>
                             <div id="aiStyleContainer" style="display: none;">
                                 <label style="font-size: 0.8rem;">Stil (Style)</label>
-                                <input type="text" id="aiStyle" class="form-control" style="padding: 0.4rem; font-size: 0.85rem;" placeholder="örn: Casual">
+                                <select id="aiStyle" class="form-control" style="padding: 0.4rem; font-size: 0.85rem;">
+                                    <option value="">— Seçin —</option>
+                                    <option value="Günlük (Casual)">Günlük (Casual)</option>
+                                    <option value="Resmi (Formal)">Resmi (Formal)</option>
+                                    <option value="Sokak Stili">Sokak Stili</option>
+                                    <option value="Sportif">Sportif</option>
+                                    <option value="Şık">Şık</option>
+                                    <option value="Vintage">Vintage</option>
+                                </select>
                             </div>
                         </div>
                     </div>
@@ -209,5 +294,6 @@
     <script src="js/api.js" type="module"></script>
     <script src="js/ui.js" type="module"></script>
     <script src="js/main.js" type="module"></script>
+    <script src="js/app-animations.js"></script>
 </body>
 </html>

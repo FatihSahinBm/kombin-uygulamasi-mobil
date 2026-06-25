@@ -98,6 +98,7 @@ serve(async (req) => {
       4. Kısa ve Net: Kıyafet isimleri vitrin adı gibi sade olmalı. Sadece rengi, materyali ve temel türü yaz (Örn: "Krem Keten Pantolon", "Haki Oversize Tişört"). Kullanıcının seçtiği parçaları aynen yaz.
       5. Çeşitlilik: Sürekli aynı şeyleri önerme ancak sırf farklı olmak için uyumsuz saçma parçaları da eşleştirme.
       6. Görsel İstemi (Image Prompt): Önerdiğin her parça için, bir yapay zeka resim çiziciye gönderilecek İNGİLİZCE detaylı bir prompt yaz. Prompt "a highly detailed realistic product photo of a [kıyafet tarifi], flat lay on white background" tarzında olmalı.
+      7. Fiyat Tahmini (ÇOK ÖNEMLİ): Önerdiğin her parça için Türk pazarında o kıyafetin türüne ve kalitesine göre GERÇEKÇI ve GÜNCEL bir TAHMİNİ fiyat ver (TL cinsinden tam sayı). Fiyat kullanıcının bütçe aralığı içinde kalmalı (${minBudget} - ${maxBudget > 0 ? maxBudget : 'sınırsız'} TL). Örneğin: tişört/gömlek 400-1500 TL, pantolon/şort 700-2500 TL, sneaker/ayakkabı 1500-4500 TL, kaban/mont 2000-8000 TL, aksesuar 400-2000 TL.
 
       Lütfen YALNIZCA aşağıdaki JSON formatında yanıt ver. Başka hiçbir açıklama veya markdown tırnağı (\`\`\`json) KULLANMA.
       
@@ -105,14 +106,19 @@ serve(async (req) => {
         "outfit": {
           "top": "üst giyim önerisi (veya kullanıcının seçtiği parça)",
           "top_prompt": "a highly detailed realistic product photo of a [kıyafetin ingilizce tarifi], flat lay on white background",
+          "top_price": 850,
           "bottom": "alt giyim önerisi (veya kullanıcının seçtiği parça)",
           "bottom_prompt": "a highly detailed realistic product photo of a [kıyafetin ingilizce tarifi], flat lay on white background",
+          "bottom_price": 1400,
           "shoes": "ayakkabı önerisi (veya kullanıcının seçtiği parça)",
           "shoes_prompt": "a highly detailed realistic product photo of a [ayakkabının ingilizce tarifi], isolated on white background",
+          "shoes_price": 2800,
           "outerwear": "dış giyim önerisi (hava soğuksa veya kullanıcı seçmişse, gerekliyse ekle, değilse yazma)",
           "outerwear_prompt": "a highly detailed realistic product photo of a [dış giyim ingilizce tarifi], flat lay on white background",
+          "outerwear_price": 3500,
           "accessory": "aksesuar önerisi (gerekliyse veya kullanıcı seçmişse ekle, değilse yazma)",
           "accessory_prompt": "a highly detailed realistic product photo of a [aksesuar ingilizce tarifi], isolated on white background",
+          "accessory_price": 650,
           "reasoning": "seçilen renklerin ve parçaların neden uyumlu olduğunun kısa açıklaması"
         }
       }

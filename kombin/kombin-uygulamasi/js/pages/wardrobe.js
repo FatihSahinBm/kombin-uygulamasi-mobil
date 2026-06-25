@@ -42,53 +42,361 @@ export const wardrobe = {
         let pendingParts = [];
         let selectedMultiParts = new Set();
         let allDetectedParts = [];
+        let activeAnalysisId = 0;
+        let isAnalyzingCroppedAction = false; // Kırpma işlemi ile mi tetiklendi takibi
 
-        // Canvas ile fotoğrafı kategoriye göre kırpma
-        const cropImageForCategory = (base64, category) => {
-            return new Promise(resolve => {
-                const img = new Image();
-                img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    const ctx = canvas.getContext('2d');
-                    const w = img.width, h = img.height;
-                    // Kategoriye göre kırpma bölgeleri (y başlangıç %, yükseklik %)
-                    // ÖNEMLİ: Bölgeler üst üste BİNMEMELİ, her parça kendi alanını görmeli
-                    const regions = {
-                        'top garment':    { sy: 0.05, sh: 0.33 },  // Üst: %5 - %38
-                        'outerwear':      { sy: 0.03, sh: 0.40 },  // Dış: %3 - %43
-                        'bottom garment': { sy: 0.40, sh: 0.32 },  // Alt: %40 - %72
-                        'footwear':       { sy: 0.75, sh: 0.25 },  // Ayak: %75 - %100
-                        'accessory':      { sy: 0, sh: 1 }
-                    };
-                    const r = regions[category] || { sy: 0, sh: 1 };
-                    const cropY = Math.floor(h * r.sy);
-                    const cropH = Math.floor(h * r.sh);
-                    canvas.width = w;
-                    canvas.height = cropH;
-                    ctx.drawImage(img, 0, cropY, w, cropH, 0, 0, w, cropH);
-                    resolve(canvas.toDataURL('image/jpeg', 0.9));
+        // Canvas ile kırpma koordinatlarını okuyup görseli kesen fonksiyon
+        const performCrop = () => {
+            const img = document.getElementById('item-full-preview');
+            const cropBox = document.getElementById('crop-box');
+            const croppedPreview = document.getElementById('item-cropped-preview');
+            if (!img || !cropBox || !currentImageBase64) return;
+
+            const w = img.clientWidth;
+            const h = img.clientHeight;
+            if (w === 0 || h === 0) return;
+
+            // Gerçek (natural) boyutlar
+            const natW = img.naturalWidth;
+            const natH = img.naturalHeight;
+
+            // Ölçeklendirme oranları
+            const scaleX = natW / w;
+            const scaleY = natH / h;
+
+            // Crop kutusunun görünür koordinatları
+            const boxX = cropBox.offsetLeft;
+            const boxY = cropBox.offsetTop;
+            const boxW = cropBox.offsetWidth;
+            const boxH = cropBox.offsetHeight;
+
+            // Gerçek boyuta eşleme
+            const cropX = Math.max(0, Math.floor(boxX * scaleX));
+            const cropY = Math.max(0, Math.floor(boxY * scaleY));
+            const cropW = Math.min(natW - cropX, Math.ceil(boxW * scaleX));
+            const cropH = Math.min(natH - cropY, Math.ceil(boxH * scaleY));
+
+            if (cropW <= 0 || cropH <= 0) return;
+
+            const canvas = document.createElement('canvas');
+            canvas.width = cropW;
+            canvas.height = cropH;
+            const ctx = canvas.getContext('2d');
+
+            // Doğrudan yüklenmiş görsel elementini çizerek asenkron gecikmeyi önleriz
+            ctx.drawImage(img, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
+            const croppedData = canvas.toDataURL('image/jpeg', 0.9);
+            currentCroppedBase64 = croppedData;
+            if (croppedPreview) {
+                croppedPreview.src = croppedData;
+            }
+        };
+
+        // Kategoriye ve görsel boyutlarına göre varsayılan crop kutusu konumunu ayarlayan fonksiyon
+        const resetCropBoxToDefault = (triggerAnalysis = true) => {
+            const img = document.getElementById('item-full-preview');
+            const cropBox = document.getElementById('crop-box');
+            const wrapper = document.getElementById('cropper-wrapper');
+            if (!img || !cropBox || !wrapper || !img.src) return;
+
+            // Görsel yüklenene kadar bekle
+            if (!img.complete || img.naturalWidth === 0) {
+                img.onload = () => resetCropBoxToDefault(triggerAnalysis);
+                return;
+            }
+
+            const w = img.clientWidth;
+            const h = img.clientHeight;
+            // Tarayıcının modal görünürlük geçişi nedeniyle boyut hesaplayamaması durumunda tekrar dene
+            if (w === 0 || h === 0) {
+                setTimeout(() => resetCropBoxToDefault(triggerAnalysis), 50);
+                return;
+            }
+
+            // Crop alanı kapsayıcısını görsele tam oturt (dışarı taşmayı önler)
+            wrapper.style.width = w + 'px';
+            wrapper.style.height = h + 'px';
+
+            const categorySelect = document.getElementById('itemCategory');
+            const cat = categorySelect ? categorySelect.value : 'ust';
+
+            // Varsayılan oranlar { x, y, w, h }
+            let region = { x: 0.1, y: 0.1, w: 0.8, h: 0.4 }; // Üst Giyim
+            if (cat === 'alt') {
+                region = { x: 0.15, y: 0.4, w: 0.7, h: 0.45 }; // Alt Giyim
+            } else if (cat === 'ayakkabi') {
+                region = { x: 0.15, y: 0.7, w: 0.7, h: 0.25 }; // Ayakkabı
+            } else if (cat === 'dis_giyim') {
+                region = { x: 0.1, y: 0.05, w: 0.8, h: 0.5 }; // Dış Giyim
+            } else if (cat === 'aksesuar') {
+                region = { x: 0.2, y: 0.2, w: 0.6, h: 0.6 }; // Aksesuar
+            }
+
+            const boxX = Math.round(w * region.x);
+            const boxY = Math.round(h * region.y);
+            const boxW = Math.round(w * region.w);
+            const boxH = Math.round(h * region.h);
+
+            cropBox.style.left = boxX + 'px';
+            cropBox.style.top = boxY + 'px';
+            cropBox.style.width = boxW + 'px';
+            cropBox.style.height = boxH + 'px';
+
+            // Önizlemeyi güncelle
+            performCrop();
+
+            if (triggerAnalysis) {
+                const mapCat = {
+                    'ust': 'top garment',
+                    'alt': 'bottom garment',
+                    'dis_giyim': 'outerwear',
+                    'ayakkabi': 'footwear',
+                    'aksesuar': 'accessory'
                 };
-                img.src = base64;
+                const forcedCategory = mapCat[cat] || 'top garment';
+                triggerAIAnalysis(forcedCategory);
+            }
+        };
+
+        // Kırpılan bölgeyi yapay zeka analizine gönderen fonksiyon
+        const triggerAIAnalysis = (forcedCategory = null, isCroppedAction = false) => {
+            if (!currentCroppedBase64 || !visionWorker) return;
+            isAnalyzingCroppedAction = isCroppedAction;
+
+            let focusCategory = null;
+            if (forcedCategory) {
+                focusCategory = forcedCategory;
+            } else if (!isCroppedAction) {
+                const categorySelect = document.getElementById('itemCategory');
+                const cat = categorySelect ? categorySelect.value : 'ust';
+                const mapCat = {
+                    'ust': 'top garment',
+                    'alt': 'bottom garment',
+                    'dis_giyim': 'outerwear',
+                    'ayakkabi': 'footwear',
+                    'aksesuar': 'accessory'
+                };
+                focusCategory = mapCat[cat] || 'top garment';
+            }
+
+            const statusText = document.getElementById('ai-status-text');
+            const attrContainer = document.getElementById('ai-attributes-container');
+
+            if (statusText) {
+                statusText.style.display = 'block';
+                statusText.textContent = 'Kıyafet seçilen bölgeye göre analiz ediliyor... 🤖';
+            }
+            if (attrContainer) {
+                attrContainer.style.display = 'none';
+            }
+
+            // İstek sırasını takip edelim
+            activeAnalysisId++;
+            visionWorker.postMessage({ 
+                imageBase64: currentCroppedBase64, 
+                focusCategory: focusCategory,
+                isCropped: isCroppedAction || !!forcedCategory,
+                analysisId: activeAnalysisId 
             });
         };
 
-        // Sıralı kuyruktan bir sonraki parçayı işle
+        // Tüm görseli (kırpılmamış) yapay zeka analizine gönderen fonksiyon (Çoklu parça kontrolü için)
+        const triggerFullImageAnalysis = () => {
+            if (!currentImageBase64 || !visionWorker) return;
+            isAnalyzingCroppedAction = false;
+
+            const statusText = document.getElementById('ai-status-text');
+            const attrContainer = document.getElementById('ai-attributes-container');
+
+            if (statusText) {
+                statusText.style.display = 'block';
+                statusText.textContent = 'Görsel inceleniyor... (Ön Analiz) 🤖';
+            }
+            if (attrContainer) {
+                attrContainer.style.display = 'none';
+            }
+
+            activeAnalysisId++;
+            visionWorker.postMessage({ 
+                imageBase64: currentImageBase64, 
+                focusCategory: null,
+                isCropped: false,
+                analysisId: activeAnalysisId 
+            });
+        };
+
+        // Sürükle ve Boyutlandır Olay Dinleyicileri Kurulumu
+        const setupCropperEvents = () => {
+            const cropBox = document.getElementById('crop-box');
+            const img = document.getElementById('item-full-preview');
+            if (!cropBox || !img) return;
+
+            let isDragging = false;
+            let isResizing = false;
+            let activeHandle = null;
+            let startX, startY, startLeft, startTop, startWidth, startHeight;
+
+            const onDown = (e) => {
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+                const handle = e.target.closest('.crop-handle');
+                if (handle) {
+                    isResizing = true;
+                    if (handle.classList.contains('nw')) activeHandle = 'nw';
+                    else if (handle.classList.contains('ne')) activeHandle = 'ne';
+                    else if (handle.classList.contains('sw')) activeHandle = 'sw';
+                    else if (handle.classList.contains('se')) activeHandle = 'se';
+                } else if (e.target === cropBox) {
+                    isDragging = true;
+                }
+
+                if (isDragging || isResizing) {
+                    e.preventDefault();
+                    startX = clientX;
+                    startY = clientY;
+                    startLeft = cropBox.offsetLeft;
+                    startTop = cropBox.offsetTop;
+                    startWidth = cropBox.offsetWidth;
+                    startHeight = cropBox.offsetHeight;
+                    
+                    document.addEventListener('mousemove', onMove);
+                    document.addEventListener('mouseup', onUp);
+                    document.addEventListener('touchmove', onMove, { passive: false });
+                    document.addEventListener('touchend', onUp);
+                }
+            };
+
+            const onMove = (e) => {
+                if (!isDragging && !isResizing) return;
+                e.preventDefault();
+
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+                const deltaX = clientX - startX;
+                const deltaY = clientY - startY;
+
+                const imgW = img.clientWidth;
+                const imgH = img.clientHeight;
+
+                if (isDragging) {
+                    let newLeft = startLeft + deltaX;
+                    let newTop = startTop + deltaY;
+
+                    // Görsel dışına taşmayı engelle
+                    newLeft = Math.max(0, Math.min(imgW - startWidth, newLeft));
+                    newTop = Math.max(0, Math.min(imgH - startHeight, newTop));
+
+                    cropBox.style.left = newLeft + 'px';
+                    cropBox.style.top = newTop + 'px';
+                } else if (isResizing) {
+                    const minSize = 40; // Minimum crop boyutu
+                    let newLeft = startLeft;
+                    let newTop = startTop;
+                    let newWidth = startWidth;
+                    let newHeight = startHeight;
+
+                    if (activeHandle === 'se') {
+                        newWidth = Math.max(minSize, Math.min(imgW - startLeft, startWidth + deltaX));
+                        newHeight = Math.max(minSize, Math.min(imgH - startTop, startHeight + deltaY));
+                    } else if (activeHandle === 'sw') {
+                        const maxLeft = startLeft + startWidth - minSize;
+                        newLeft = Math.max(0, Math.min(maxLeft, startLeft + deltaX));
+                        newWidth = startWidth + (startLeft - newLeft);
+                        newHeight = Math.max(minSize, Math.min(imgH - startTop, startHeight + deltaY));
+                    } else if (activeHandle === 'ne') {
+                        const maxTop = startTop + startHeight - minSize;
+                        newTop = Math.max(0, Math.min(maxTop, startTop + deltaY));
+                        newHeight = startHeight + (startTop - newTop);
+                        newWidth = Math.max(minSize, Math.min(imgW - startLeft, startWidth + deltaX));
+                    } else if (activeHandle === 'nw') {
+                        const maxLeft = startLeft + startWidth - minSize;
+                        const maxTop = startTop + startHeight - minSize;
+                        newLeft = Math.max(0, Math.min(maxLeft, startLeft + deltaX));
+                        newWidth = startWidth + (startLeft - newLeft);
+                        newTop = Math.max(0, Math.min(maxTop, startTop + deltaY));
+                        newHeight = startHeight + (startTop - newTop);
+                    }
+
+                    cropBox.style.left = newLeft + 'px';
+                    cropBox.style.top = newTop + 'px';
+                    cropBox.style.width = newWidth + 'px';
+                    cropBox.style.height = newHeight + 'px';
+                }
+
+                // Canlı önizleme
+                performCrop();
+            };
+
+            const onUp = () => {
+                if (isDragging || isResizing) {
+                    isDragging = false;
+                    isResizing = false;
+                    activeHandle = null;
+
+                    document.removeEventListener('mousemove', onMove);
+                    document.removeEventListener('mouseup', onUp);
+                    document.removeEventListener('touchmove', onMove);
+                    document.removeEventListener('touchend', onUp);
+
+                    // Sürükleme bittiğinde AI analizi yap (auto-detect)
+                    triggerAIAnalysis(null, true);
+                }
+            };
+
+            cropBox.addEventListener('mousedown', onDown);
+            cropBox.addEventListener('touchstart', onDown, { passive: false });
+        };
+
+        // Kategori değişim dinleyicisi
+        const categorySelectDOM = document.getElementById('itemCategory');
+        if (categorySelectDOM) {
+            categorySelectDOM.addEventListener('change', () => {
+                if (currentImageBase64) {
+                    resetCropBoxToDefault(true);
+                }
+            });
+        }
+
+        // Sıralı kuyruktan bir sonraki parçayı işle (Çoklu algılama için)
         const processNextPart = async () => {
             if (pendingParts.length === 0) return;
             const part = pendingParts.shift();
             document.getElementById('modal-title').textContent = `${part.name} Ekle`;
             document.getElementById('editItemId').value = '';
             form.reset();
+
+            // Kategori seçimi otomatik ayarla
+            const catMap = {
+                'top garment': 'ust',
+                'bottom garment': 'alt',
+                'outerwear': 'dis_giyim',
+                'footwear': 'ayakkabi',
+                'accessory': 'aksesuar'
+            };
+            const catSelect = document.getElementById('itemCategory');
+            if (catSelect) {
+                catSelect.value = catMap[part.key] || 'ust';
+            }
+
             document.getElementById('ai-attributes-container').style.display = 'none';
             const statusText = document.getElementById('ai-status-text');
             statusText.style.display = 'block';
             statusText.textContent = `${part.emoji} ${part.name} kırpılıyor ve analiz ediliyor...`;
             modal.style.display = 'flex';
             setTimeout(() => modal.classList.add('active'), 10);
-            // Kırp ve worker'a gönder
-            const croppedBase64 = await cropImageForCategory(currentImageBase64, part.key);
-            currentCroppedBase64 = croppedBase64; // Kaydet (upload için de kullanılacak)
-            visionWorker.postMessage({ imageBase64: croppedBase64, focusCategory: part.key });
+            
+            // Önizlemeyi göster ve crop kutusunu etkinleştir
+            const fullImg = document.getElementById('item-full-preview');
+            fullImg.src = currentImageBase64;
+            document.getElementById('wardrobe-image-preview-container').style.display = 'flex';
+            
+            const cropBox = document.getElementById('crop-box');
+            if (cropBox) cropBox.style.display = 'block';
+
+            // Varsayılan crop box yerleşimi ve analiz
+            resetCropBoxToDefault(true);
         };
         
         // Modal etkileşimleri
@@ -98,6 +406,12 @@ export const wardrobe = {
             form.reset();
             document.getElementById('ai-attributes-container').style.display = 'none';
             document.getElementById('ai-status-text').style.display = 'none';
+            
+            // Önizlemeleri temizle
+            document.getElementById('item-full-preview').src = '';
+            document.getElementById('item-cropped-preview').src = '';
+            document.getElementById('wardrobe-image-preview-container').style.display = 'none';
+            
             currentImageBase64 = null;
             currentImageFile = null;
             modal.style.display = 'flex';
@@ -106,31 +420,26 @@ export const wardrobe = {
         
         if (closeModalBtn) closeModalBtn.addEventListener('click', () => {
             modal.classList.remove('active');
-            setTimeout(() => modal.style.display = 'none', 300);
+            setTimeout(() => {
+                modal.style.display = 'none';
+                // Önizlemeleri temizle
+                document.getElementById('item-full-preview').src = '';
+                document.getElementById('item-cropped-preview').src = '';
+                document.getElementById('wardrobe-image-preview-container').style.display = 'none';
+            }, 300);
         });
+
+        // Kırpma alanını ve olay dinleyicilerini kur
+        setupCropperEvents();
 
         // Verileri Yükle
         await this.loadItems(listContainer);
 
-        // Arama Dinleyicisi
-        const searchInput = document.getElementById('wardrobe-search');
-        if (searchInput) {
-            searchInput.addEventListener('input', (e) => {
-                this._searchQuery = e.target.value.toLowerCase();
-                this.renderFilteredItems(listContainer);
-            });
-        }
-
-        // Kategori Çipleri Dinleyicisi
-        const chipsContainer = document.getElementById('category-chips-container');
-        if (chipsContainer) {
-            const chips = chipsContainer.querySelectorAll('.app-category-chip');
-            chips.forEach(chip => {
-                chip.addEventListener('click', () => {
-                    chips.forEach(c => c.classList.remove('active'));
-                    chip.classList.add('active');
-                    this.renderFilteredItems(listContainer);
-                });
+        // Filtreleme Dinleyicisi
+        const filterSelect = document.getElementById('wardrobe-filter');
+        if (filterSelect) {
+            filterSelect.addEventListener('change', (e) => {
+                this.loadItems(listContainer, e.target.value);
             });
         }
 
@@ -140,7 +449,14 @@ export const wardrobe = {
             visionWorker = new Worker('js/workers/vision-worker.js', { type: 'module' });
             
             visionWorker.onmessage = (e) => {
-                const { status, message, results, detectedParts } = e.data;
+                const { status, message, results, detectedParts, analysisId } = e.data;
+                
+                // Eski/gecikmeli isteklerden gelen sonuçları yok sayalım
+                if (analysisId && analysisId !== activeAnalysisId) {
+                    console.log(`Eski istek sonucu yok sayıldı (İstek ID: ${analysisId}, Güncel ID: ${activeAnalysisId})`);
+                    return;
+                }
+
                 const statusText = document.getElementById('ai-status-text');
                 const attrContainer = document.getElementById('ai-attributes-container');
 
@@ -205,46 +521,72 @@ export const wardrobe = {
                     statusText.style.display = 'none';
                     attrContainer.style.display = 'block';
                     
-                    // Kategori bazlı form değişiklikleri
-                    if (results.mainCategory) {
-                        const sel = document.getElementById('itemCategory');
-                        if (results.mainCategory === 'top garment') sel.value = 'ust';
-                        else if (results.mainCategory === 'bottom garment') sel.value = 'alt';
-                        else if (results.mainCategory === 'outerwear') sel.value = 'dis_giyim';
-                        else if (results.mainCategory === 'footwear') sel.value = 'ayakkabi';
-                        else sel.value = 'aksesuar';
+                    // Kategori Select elemanını güncelle
+                    const categorySelect = document.getElementById('itemCategory');
+                    let categoryChanged = false;
+                    if (categorySelect && results.mainCategory) {
+                        const reverseMap = {
+                            'top garment': 'ust',
+                            'bottom garment': 'alt',
+                            'outerwear': 'dis_giyim',
+                            'footwear': 'ayakkabi',
+                            'accessory': 'aksesuar'
+                        };
+                        const targetValue = reverseMap[results.mainCategory] || 'ust';
+                        if (categorySelect.value !== targetValue) {
+                            categorySelect.value = targetValue;
+                            categoryChanged = true;
+                        }
                     }
 
-                    // İsmi kategori adı yapalım default olarak (Eğer boşsa)
+                    // Kategori değiştiyse ve bu sürükleme işlemiyle tetiklenmediyse crop box'ı yeniden konumlandır
+                    if (categoryChanged && !isAnalyzingCroppedAction) {
+                        resetCropBoxToDefault(false);
+                    }
+
+                    // İsmi her zaman yeni algılanan kategoriyle güncelleyelim
                     const nameInput = document.getElementById('itemName');
-                    if (!nameInput.value && results.category) nameInput.value = results.category;
+                    if (results.category) nameInput.value = results.category;
 
                     // Ortak Özellikler (Renk vb.)
                     if (results.color) document.getElementById('itemColor').value = results.color;
 
-                    // Container Gösterimleri ve Value Atamaları
-                    const setAttr = (id, val) => {
+                    // Önce tüm AI nitelik kutularını gizleyelim
+                    const allAiContainers = [
+                        'aiFitContainer',
+                        'aiLegLengthContainer',
+                        'aiNecklineContainer',
+                        'aiSleeveContainer',
+                        'aiTextureContainer',
+                        'aiStyleContainer'
+                    ];
+                    allAiContainers.forEach(id => {
+                        const el = document.getElementById(id);
+                        if (el) el.style.display = 'none';
+                    });
+
+                    // Hangi kategoride hangi kutuların gösterileceğini belirleyelim ve değerleri atayalım
+                    const showAttr = (id, val) => {
                         const container = document.getElementById(id + 'Container');
                         const input = document.getElementById(id);
                         if (container && input) {
-                            if (val) {
-                                container.style.display = 'block';
-                                input.value = val;
-                            } else {
-                                container.style.display = 'none';
-                                input.value = '';
-                            }
+                            container.style.display = 'block';
+                            input.value = val || '';
                         }
                     };
 
-                    setAttr('aiFit', results.fit);
-                    setAttr('aiLegLength', results.leg_length);
-                    setAttr('aiNeckline', results.neckline);
-                    setAttr('aiSleeve', results.sleeve);
-                    
-                    // Her zaman gösterilebilecek genel özellikler
-                    setAttr('aiTexture', results.texture);
-                    setAttr('aiStyle', results.style);
+                    const mainCat = results.mainCategory;
+                    if (mainCat === 'top garment' || mainCat === 'outerwear') {
+                        showAttr('aiFit', results.fit);
+                        showAttr('aiNeckline', results.neckline);
+                        showAttr('aiSleeve', results.sleeve);
+                    } else if (mainCat === 'bottom garment') {
+                        showAttr('aiFit', results.fit);
+                        showAttr('aiLegLength', results.leg_length);
+                    }
+                    // Genel özellikler (her zaman gösterilebilir)
+                    showAttr('aiTexture', results.texture);
+                    showAttr('aiStyle', results.style);
 
                 } else if (status === 'error') {
                     statusText.textContent = 'Analiz Hatası: ' + message;
@@ -252,7 +594,7 @@ export const wardrobe = {
             };
         }
 
-        // Resim Seçildiğinde Analizi Başlat
+        // Resim Seçildiğinde Önizle ve Kırp/Analiz Et
         const fileInputDOM = document.getElementById('itemImage');
         if (fileInputDOM && visionWorker) {
             fileInputDOM.addEventListener('change', (e) => {
@@ -263,7 +605,19 @@ export const wardrobe = {
                 const reader = new FileReader();
                 reader.onload = (event) => {
                     currentImageBase64 = event.target.result;
-                    visionWorker.postMessage({ imageBase64: currentImageBase64 });
+                    
+                    // Görsel önizlemelerini güncelle ve crop kutusunu görünür kıl
+                    const cropBox = document.getElementById('crop-box');
+                    if (cropBox) cropBox.style.display = 'block';
+
+                    document.getElementById('item-full-preview').src = currentImageBase64;
+                    document.getElementById('wardrobe-image-preview-container').style.display = 'flex';
+                    
+                    // Varsayılan crop box yerleşimi (Analiz tetiklemeden)
+                    resetCropBoxToDefault(false);
+
+                    // Tüm görsel analizi başlat (Auto-detect & Multi-detect check için)
+                    triggerFullImageAnalysis();
                 };
                 reader.readAsDataURL(file);
             });
@@ -271,13 +625,25 @@ export const wardrobe = {
 
         // Sosyal akıştan "Gardıroba Ekle" ile gelindiyse görseli otomatik işle
         const pendingSocialImage = sessionStorage.getItem('pendingSocialImage');
+        const pendingSocialCategory = sessionStorage.getItem('pendingSocialCategory');
+        const pendingSocialLabel = sessionStorage.getItem('pendingSocialLabel');
+        
         if (pendingSocialImage && visionWorker) {
             sessionStorage.removeItem('pendingSocialImage');
+            if (pendingSocialCategory) sessionStorage.removeItem('pendingSocialCategory');
+            if (pendingSocialLabel) sessionStorage.removeItem('pendingSocialLabel');
 
             // Modalı aç
             document.getElementById('modal-title').textContent = 'Kıyafet Ekle';
             document.getElementById('editItemId').value = '';
             form.reset();
+            
+            // Eğer kategori zaten biliniyorsa formda set et ve ismi doldur
+            if (pendingSocialCategory) {
+                document.getElementById('itemCategory').value = pendingSocialCategory;
+                document.getElementById('itemName').value = pendingSocialLabel || '';
+            }
+            
             document.getElementById('ai-attributes-container').style.display = 'none';
             const statusText = document.getElementById('ai-status-text');
             statusText.style.display = 'block';
@@ -295,7 +661,19 @@ export const wardrobe = {
                 canvas.getContext('2d').drawImage(img, 0, 0);
                 const base64 = canvas.toDataURL('image/jpeg', 0.9);
                 currentImageBase64 = base64;
-                visionWorker.postMessage({ imageBase64: base64 });
+                
+                // Görsel önizlemelerini güncelle ve crop kutusunu görünür kıl
+                const cropBox = document.getElementById('crop-box');
+                if (cropBox) cropBox.style.display = 'block';
+
+                document.getElementById('item-full-preview').src = base64;
+                document.getElementById('wardrobe-image-preview-container').style.display = 'flex';
+                
+                // Varsayılan crop box yerleşimi (Analiz tetiklemeden)
+                resetCropBoxToDefault(false);
+
+                // Tüm görsel analizi başlat
+                triggerFullImageAnalysis();
             };
             img.onerror = () => {
                 statusText.textContent = 'Görsel yüklenemedi. Lütfen manuel seçin.';
@@ -310,6 +688,12 @@ export const wardrobe = {
                 form.reset(); // İsim, Kategori, Renk ve File (Resim) inputlarını sıfırlar
                 currentImageBase64 = null;
                 currentImageFile = null;
+                currentCroppedBase64 = null;
+                
+                // Önizlemeleri temizle ve gizle
+                document.getElementById('item-full-preview').src = '';
+                document.getElementById('item-cropped-preview').src = '';
+                document.getElementById('wardrobe-image-preview-container').style.display = 'none';
                 
                 // Yapay Zeka sonuçlarını gizle ve temizle
                 document.getElementById('ai-status-text').style.display = 'none';
@@ -419,7 +803,7 @@ export const wardrobe = {
                     }
                     
                     // Listeyi Yenile
-                    await this.loadItems(listContainer);
+                    await this.loadItems(listContainer, document.getElementById('wardrobe-filter').value);
                 } catch (error) {
                     alert("İşlem sırasında hata oluştu.");
                     console.error(error);
@@ -431,186 +815,182 @@ export const wardrobe = {
         }
     },
 
-    async loadItems(container) {
+    async loadItems(container, filterCat = 'all') {
         if (!container) return;
         try {
+            // Kullanıcı profilini her filtre değişiminde tekrar çekme
             if (!this._cachedUserId) {
                 const tempUser = await api.getUserProfile();
                 if (!tempUser) return;
                 this._cachedUserId = tempUser.id;
             }
 
-            this._cachedItems = await api.getWardrobeItems(this._cachedUserId);
-            this.renderFilteredItems(container);
-
-            // Event delegation: tüm kart ve silme tıklamalarını container üzerinde yönet (Yalnızca bir kez eklenir)
-            if (!this._hasRegisteredEvents) {
-                this._hasRegisteredEvents = true;
-                container.addEventListener('click', (e) => {
-                    const deleteBtn = e.target.closest('.delete-item-btn');
-                    if (deleteBtn) {
-                        e.stopPropagation();
-                        ui.confirmDialog("Kıyafeti Sil?", "Bu kıyafeti gardırobundan kalıcı olarak silmek istediğine emin misin?", "Evet, Sil", async () => {
-                            try {
-                                await api.deleteWardrobeItem(deleteBtn.getAttribute('data-id'));
-                                await this.loadItems(container);
-                            } catch(err) {
-                                console.error("Silme Hatası", err);
-                                alert("Kıyafet silinirken hata oluştu! Eğer silinmiyorsa Veritabanınızda (Supabase) DELETE Politikası (Policy) eksik demektir.");
-                            }
-                        });
-                        return;
-                    }
-
-                    const card = e.target.closest('.app-wardrobe-item-card');
-                    if (!card) return;
-
-                    const itemDataRaw = card.getAttribute('data-item');
-                    if (!itemDataRaw) return;
-
-                    const itemData = JSON.parse(itemDataRaw.replace(/&quot;/g, '"').replace(/&#39;/g, "'"));
-
-                    document.getElementById('modal-title').textContent = "Kıyafet Düzenle";
-                    document.getElementById('editItemId').value = itemData.id;
-                    document.getElementById('itemName').value = itemData.name || '';
-                    document.getElementById('itemColor').value = itemData.colors?.name || '';
-
-                    const catSelect = document.getElementById('itemCategory');
-                    const catNameLower = itemData.categories?.name?.toLowerCase() || '';
-                    if (catNameLower.includes('ust') || catNameLower.includes('üst')) catSelect.value = 'ust';
-                    else if (catNameLower.includes('alt')) catSelect.value = 'alt';
-                    else if (catNameLower.includes('ayakkabi') || catNameLower.includes('ayakkabı')) catSelect.value = 'ayakkabi';
-                    else if (catNameLower.includes('dis') || catNameLower.includes('dış')) catSelect.value = 'dis_giyim';
-                    else catSelect.value = 'aksesuar';
-
-                    const attrs = itemData.attributes || {};
-                    document.getElementById('ai-attributes-container').style.display = 'block';
-                    document.getElementById('ai-status-text').style.display = 'none';
-
-                    const setAttr = (id, val) => {
-                        const c = document.getElementById(id + 'Container');
-                        const i = document.getElementById(id);
-                        if (c && i) {
-                            if (val) { c.style.display = 'block'; i.value = val; }
-                            else { c.style.display = 'none'; i.value = ''; }
-                        }
-                    };
-
-                    setAttr('aiFit', attrs.fit);
-                    setAttr('aiLegLength', attrs.leg_length);
-                    setAttr('aiNeckline', attrs.neckline);
-                    setAttr('aiSleeve', attrs.sleeve);
-                    setAttr('aiTexture', attrs.texture);
-                    setAttr('aiStyle', attrs.style);
-
-                    const modal = document.getElementById('add-item-modal');
-                    modal.style.display = 'flex';
-                    setTimeout(() => modal.classList.add('active'), 10);
+            let items = await api.getWardrobeItems(this._cachedUserId);
+            
+            // Filtreleme Mantığı
+            if (filterCat !== 'all') {
+                items = items.filter(item => {
+                    const catName = item.categories?.name?.toLowerCase() || '';
+                    if (filterCat === 'ust') return catName.includes('ust') || catName.includes('üst');
+                    if (filterCat === 'alt') return catName.includes('alt') || catName.includes('pantolon') || catName.includes('şort');
+                    if (filterCat === 'ayakkabi') return catName.includes('ayakkabi') || catName.includes('ayakkabı');
+                    if (filterCat === 'dis_giyim') return catName.includes('dis') || catName.includes('dış') || catName.includes('ceket');
+                    if (filterCat === 'aksesuar') return catName.includes('aksesuar');
+                    return false;
                 });
             }
+
+            if (items.length === 0) {
+                container.innerHTML = `<p style="grid-column: 1/-1; color: var(--text-muted);">Bu kategoride henüz kıyafetiniz yok.</p>`;
+                return;
+            }
+
+            // HTML Encode helper to safely stringify item for JSON
+            const htmlEscape = (str) => {
+                return String(str).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+            };
+
+            // Kategorileri düzgün Türkçe isimlere çevirme
+            const formatCategory = (cat) => {
+                if (!cat) return 'Kategori Yok';
+                const c = cat.toLowerCase();
+                if (c === 'ust') return 'Üst Giyim';
+                if (c === 'alt') return 'Alt Giyim';
+                if (c === 'dis_giyim') return 'Dış Giyim';
+                if (c === 'ayakkabi') return 'Ayakkabı';
+                if (c === 'aksesuar') return 'Aksesuar';
+                return cat;
+            };
+
+            container.innerHTML = items.map(item => `
+                <div class="card wardrobe-item-card" data-item="${htmlEscape(JSON.stringify(item))}" style="display: flex; flex-direction: column; position: relative; overflow: hidden; border-radius: 12px; border: none; box-shadow: 0 4px 15px rgba(0,0,0,0.06); transition: transform 0.2s; cursor: pointer;" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
+                    
+                    <button class="delete-item-btn" data-id="${item.id}" style="position: absolute; top: 10px; right: 10px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.9); border: none; color: #ff4d4f; font-size: 1.2rem; cursor: pointer; border-radius: 50%; box-shadow: 0 2px 5px rgba(0,0,0,0.1); transition: all 0.2s; z-index: 10;" onmouseover="this.style.transform='scale(1.1)'; this.style.background='white';" onmouseout="this.style.transform='scale(1)'; this.style.background='rgba(255,255,255,0.9)';" title="Kıyafeti Sil">
+                        &times;
+                    </button>
+                    
+                    <div class="wardrobe-item-img-container" style="width: 100%; aspect-ratio: 4/5; background: #f8fafc; display: flex; align-items: center; justify-content: center; overflow: hidden; pointer-events: none;">
+                        ${item.image_url ?
+                            `<img class="wardrobe-item-img" src="${item.image_url}" alt="${item.name}" loading="lazy" style="width: 100%; height: 100%; object-fit: cover;">`
+                            : 
+                            `<div style="font-size: 3.5rem; opacity: 0.8;">${
+                                (item.categories?.name?.toLowerCase().includes('ust') || item.categories?.name?.toLowerCase().includes('üst')) ? '👕' : 
+                                (item.categories?.name?.toLowerCase().includes('alt')) ? '👖' : 
+                                (item.categories?.name?.toLowerCase().includes('ayakkabi') || item.categories?.name?.toLowerCase().includes('ayakkabı')) ? '👟' : 
+                                (item.categories?.name?.toLowerCase().includes('dis') || item.categories?.name?.toLowerCase().includes('dış') || item.categories?.name?.toLowerCase().includes('ceket')) ? '🧥' : '🎒'
+                            }</div>`
+                        }
+                    </div>
+                    
+                    <div class="wardrobe-item-info" style="padding: 1rem; text-align: left; border-top: 1px solid var(--border-color); pointer-events: none;">
+                        <p class="wardrobe-item-category" style="margin: 0 0 4px 0; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">${formatCategory(item.categories?.name)}</p>
+                        <h3 class="wardrobe-item-title" style="margin: 0; font-size: 1.1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${item.name}">${item.name || "İsimsiz Seçim"}</h3>
+                        <p class="wardrobe-item-color" style="margin: 5px 0 0 0; font-size: 0.85rem; font-weight: 500; display: flex; align-items: center; gap: 6px;">
+                            <span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: ${item.colors?.name?.toLowerCase() === 'beyaz' ? '#f8fafc' : (item.colors?.name?.toLowerCase() === 'siyah' ? '#0f172a' : 'var(--primary-color)')}; border: 1px solid #cbd5e1;"></span>
+                            ${item.colors?.name || "Belirtilmemiş"}
+                        </p>
+                    </div>
+
+                </div>
+            `).join('');
+
+            // Event delegation: tüm kart ve silme tıklamalarını container üzerinde yönet
+            container.addEventListener('click', (e) => {
+                const deleteBtn = e.target.closest('.delete-item-btn');
+                if (deleteBtn) {
+                    e.stopPropagation();
+                    ui.confirmDialog("Kıyafeti Sil?", "Bu kıyafeti gardırobundan kalıcı olarak silmek istediğine emin misin?", "Evet, Sil", async () => {
+                        try {
+                            await api.deleteWardrobeItem(deleteBtn.getAttribute('data-id'));
+                            await this.loadItems(container, document.getElementById('wardrobe-filter')?.value || 'all');
+                        } catch(err) {
+                            console.error("Silme Hatası", err);
+                            alert("Kıyafet silinirken hata oluştu! Eğer silinmiyorsa Veritabanınızda (Supabase) DELETE Politikası (Policy) eksik demektir.");
+                        }
+                    });
+                    return;
+                }
+
+                const card = e.target.closest('.wardrobe-item-card');
+                if (!card) return;
+
+                const itemDataRaw = card.getAttribute('data-item');
+                if (!itemDataRaw) return;
+
+                const itemData = JSON.parse(itemDataRaw.replace(/&quot;/g, '"').replace(/&#39;/g, "'"));
+
+                document.getElementById('modal-title').textContent = "Kıyafet Düzenle";
+                document.getElementById('editItemId').value = itemData.id;
+                document.getElementById('itemName').value = itemData.name || '';
+                document.getElementById('itemColor').value = itemData.colors?.name || '';
+
+                const catSelect = document.getElementById('itemCategory');
+                const catNameLower = itemData.categories?.name?.toLowerCase() || '';
+                if (catNameLower.includes('ust') || catNameLower.includes('üst')) catSelect.value = 'ust';
+                else if (catNameLower.includes('alt')) catSelect.value = 'alt';
+                else if (catNameLower.includes('ayakkabi') || catNameLower.includes('ayakkabı')) catSelect.value = 'ayakkabi';
+                else if (catNameLower.includes('dis') || catNameLower.includes('dış')) catSelect.value = 'dis_giyim';
+                else catSelect.value = 'aksesuar';
+
+                const attrs = itemData.attributes || {};
+                document.getElementById('ai-attributes-container').style.display = 'block';
+                document.getElementById('ai-status-text').style.display = 'none';
+
+                // Önce tüm nitelik kutularını gizle
+                ['aiFit', 'aiLegLength', 'aiNeckline', 'aiSleeve', 'aiTexture', 'aiStyle'].forEach(id => {
+                    const c = document.getElementById(id + 'Container');
+                    const i = document.getElementById(id);
+                    if (c) c.style.display = 'none';
+                    if (i) i.value = '';
+                });
+
+                const showAttrEdit = (id, val) => {
+                    const c = document.getElementById(id + 'Container');
+                    const i = document.getElementById(id);
+                    if (c && i) {
+                        c.style.display = 'block';
+                        i.value = val || '';
+                    }
+                };
+
+                // Kategoriye göre sadece ilgili alanları göster
+                const editCat = catSelect.value;
+                if (editCat === 'ust' || editCat === 'dis_giyim') {
+                    showAttrEdit('aiFit', attrs.fit);
+                    showAttrEdit('aiNeckline', attrs.neckline);
+                    showAttrEdit('aiSleeve', attrs.sleeve);
+                } else if (editCat === 'alt') {
+                    showAttrEdit('aiFit', attrs.fit);
+                    showAttrEdit('aiLegLength', attrs.leg_length);
+                }
+                // Doku ve Stil her kategori için göster
+                showAttrEdit('aiTexture', attrs.texture);
+                showAttrEdit('aiStyle', attrs.style);
+
+                // Düzenleme modunda görsel önizlemelerini doldur ve kırpma kutusunu gizle
+                const previewContainer = document.getElementById('wardrobe-image-preview-container');
+                const fullPreview = document.getElementById('item-full-preview');
+                const croppedPreview = document.getElementById('item-cropped-preview');
+                if (previewContainer && fullPreview && croppedPreview) {
+                    if (itemData.image_url) {
+                        previewContainer.style.display = 'flex';
+                        fullPreview.src = itemData.image_url;
+                        croppedPreview.src = itemData.image_url;
+                        const cropBox = document.getElementById('crop-box');
+                        if (cropBox) cropBox.style.display = 'none'; // Düzenlerken kutu gizlensin, yeni görsel yüklenince açılır
+                    } else {
+                        previewContainer.style.display = 'none';
+                    }
+                }
+
+                const modal = document.getElementById('add-item-modal');
+                modal.style.display = 'flex';
+                setTimeout(() => modal.classList.add('active'), 10);
+            });
 
         } catch (error) {
             container.innerHTML = `<p style="grid-column: 1/-1; color: red;">Veriler çekilemedi.</p>`;
             console.error(error);
         }
-    },
-
-    renderFilteredItems(container) {
-        if (!container || !this._cachedItems) return;
-        
-        let filtered = this._cachedItems;
-        
-        // Filter by category
-        const activeChip = document.querySelector('.app-category-chip.active');
-        const filterCat = activeChip ? activeChip.getAttribute('data-category') : 'all';
-        
-        if (filterCat !== 'all') {
-            filtered = filtered.filter(item => {
-                const catName = item.categories?.name?.toLowerCase() || '';
-                if (filterCat === 'ust') return catName.includes('ust') || catName.includes('üst');
-                if (filterCat === 'alt') return catName.includes('alt') || catName.includes('pantolon') || catName.includes('şort');
-                if (filterCat === 'ayakkabi') return catName.includes('ayakkabi') || catName.includes('ayakkabı');
-                if (filterCat === 'dis_giyim') return catName.includes('dis') || catName.includes('dış') || catName.includes('ceket');
-                if (filterCat === 'aksesuar') return catName.includes('aksesuar');
-                return false;
-            });
-        }
-        
-        // Filter by search query
-        const searchQuery = this._searchQuery || '';
-        if (searchQuery) {
-            filtered = filtered.filter(item => 
-                (item.name && item.name.toLowerCase().includes(searchQuery)) ||
-                (item.colors?.name && item.colors.name.toLowerCase().includes(searchQuery)) ||
-                (item.attributes?.brand && item.attributes.brand.toLowerCase().includes(searchQuery))
-            );
-        }
-        
-        // Update header count dynamically!
-        const countEl = document.getElementById('wardrobe-count');
-        if (countEl) {
-            countEl.textContent = `${this._cachedItems.length} kıyafet`;
-        }
-        
-        // Render
-        if (filtered.length === 0) {
-            container.innerHTML = `
-                <div class="app-wardrobe-empty" style="grid-column: 1/-1; text-align: center; padding: 4rem 1.5rem; width: 100%;">
-                    <span style="font-size: 4rem; display: block; margin-bottom: 1rem;">👗</span>
-                    <h3 style="color: white; margin-bottom: 0.5rem; font-size: 1.2rem; font-weight: 700;">Kıyafet Bulunamadı</h3>
-                    <p style="color: #9ca3af; font-size: 0.9rem;">Aramanıza veya filtreye uygun parça yok.</p>
-                </div>
-            `;
-            return;
-        }
-        
-        // HTML Encode helper to safely stringify item for JSON
-        const htmlEscape = (str) => {
-            return String(str).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-        };
-
-        // Kategorileri düzgün Türkçe isimlere çevirme
-        const formatCategory = (cat) => {
-            if (!cat) return 'Kategori Yok';
-            const c = cat.toLowerCase();
-            if (c === 'ust') return 'Üst Giyim';
-            if (c === 'alt') return 'Alt Giyim';
-            if (c === 'dis_giyim') return 'Dış Giyim';
-            if (c === 'ayakkabi') return 'Ayakkabı';
-            if (c === 'aksesuar') return 'Aksesuar';
-            return cat;
-        };
-        
-        container.innerHTML = filtered.map(item => `
-            <div class="app-wardrobe-item-card" data-item="${htmlEscape(JSON.stringify(item))}">
-                <button class="delete-item-btn" data-id="${item.id}" style="position: absolute; top: 10px; right: 10px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.5); border: none; color: #ff4d4f; font-size: 1.2rem; cursor: pointer; border-radius: 50%; box-shadow: 0 2px 5px rgba(0,0,0,0.2); transition: all 0.2s; z-index: 10;" onmouseover="this.style.background='rgba(0,0,0,0.8)';" onmouseout="this.style.background='rgba(0,0,0,0.5)';" title="Kıyafeti Sil">
-                    &times;
-                </button>
-                
-                <div class="app-wardrobe-item-img-wrapper">
-                    ${item.image_url ?
-                        `<img src="${item.image_url}" alt="${item.name}" loading="lazy">`
-                        : 
-                        `<div class="app-wardrobe-item-placeholder">
-                            ${
-                                (item.categories?.name?.toLowerCase().includes('ust') || item.categories?.name?.toLowerCase().includes('üst')) ? '👕' : 
-                                (item.categories?.name?.toLowerCase().includes('alt')) ? '👖' : 
-                                (item.categories?.name?.toLowerCase().includes('ayakkabi') || item.categories?.name?.toLowerCase().includes('ayakkabı')) ? '👟' : 
-                                (item.categories?.name?.toLowerCase().includes('dis') || item.categories?.name?.toLowerCase().includes('dış') || item.categories?.name?.toLowerCase().includes('ceket')) ? '🧥' : '🎒'
-                            }
-                        </div>`
-                    }
-                </div>
-                
-                <div class="app-wardrobe-item-info">
-                    <h3 class="app-wardrobe-item-name" title="${item.name}">${item.name || "İsimsiz Seçim"}</h3>
-                    ${item.attributes?.brand ? `<p class="app-wardrobe-item-brand">${item.attributes.brand}</p>` : ''}
-                    <div class="app-wardrobe-tags">
-                        <span class="app-wardrobe-tag">${formatCategory(item.categories?.name)}</span>
-                        ${item.colors?.name ? `<span class="app-wardrobe-tag">${item.colors.name}</span>` : ''}
-                    </div>
-                </div>
-            </div>
-        `).join('');
     }
 };

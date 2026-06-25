@@ -109,6 +109,29 @@ export const auth = {
     },
 
     /**
+     * Check active session (with Supabase fallback) and sync
+     */
+    async checkSession() {
+        if (supabase) {
+            try {
+                const { data: { session } } = await supabase.auth.getSession();
+                if (session) {
+                    localStorage.setItem(SESSION_KEY, 'true');
+                    return true;
+                } else {
+                    localStorage.removeItem(SESSION_KEY);
+                    localStorage.removeItem(USER_KEY);
+                    return false;
+                }
+            } catch (err) {
+                console.error("Session check error:", err);
+                return this.isLoggedIn();
+            }
+        }
+        return this.isLoggedIn();
+    },
+
+    /**
      * Get current user data
      */
     async getCurrentUser() {

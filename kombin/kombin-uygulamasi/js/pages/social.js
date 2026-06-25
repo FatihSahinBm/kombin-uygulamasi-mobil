@@ -1,16 +1,227 @@
 import { api } from '../api.js';
 import { ui } from '../ui.js';
+import { auth } from '../auth.js';
 
 export const social = {
     feedData: [],
     currentUserId: null,
+    currentUserEmail: null,
     myLikedPostIds: new Set(),
     mySavedPostIds: new Set(),
     _listenersAttached: false,
+    currentPost: null,
+
+    async renderComments(postId) {
+        const commentsList = document.getElementById('comments-list');
+        const commentsSection = document.getElementById('comments-section');
+        if (!commentsList) return;
+        commentsList.innerHTML = '<p style="color: var(--text-muted); font-size: 0.9rem; text-align:center;">Yükleniyor...</p>';
+        try {
+            const comments = await api.getComments(postId);
+            commentsList.innerHTML = '';
+
+            if (comments.length === 0) {
+                commentsList.innerHTML = '<p style="color: var(--text-muted); font-size: 0.95rem; font-style: italic; text-align: center; margin-top: 2rem;">Henüz yorum yok. İlk yorumu sen yap!</p>';
+                return;
+            }
+
+            comments.forEach(comment => {
+                const uname = comment.users?.name || 'Kullanıcı';
+                const avatarUrl = comment.users?.avatar_url || null;
+                const isOwn = comment.user_id === this.currentUserId;
+                const date = new Date(comment.created_at).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+
+                const avatarHtml = avatarUrl 
+                    ? `<img src="${avatarUrl}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`
+                    : `${uname.charAt(0).toUpperCase()}`;
+
+                const commentDiv = document.createElement('div');
+                commentDiv.className = 'comment-item';
+                commentDiv.style.cssText = 'display:flex; gap:0.8rem; align-items:flex-start; margin-bottom:0.8rem;';
+                commentDiv.innerHTML = `
+                    <div style="width:32px;height:32px;border-radius:50%;background:var(--primary-color);color:white;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:0.85rem;flex-shrink:0;overflow:hidden;">${avatarHtml}</div>
+                    <div style="flex:1;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;">
+                            <div>
+                                <span style="font-weight:700;font-size:0.95rem;color:var(--text-primary);margin-right:0.5rem;">${uname}</span>
+                                <span style="font-size:0.95rem;color:var(--text-secondary);word-break:break-word;">${comment.text}</span>
+                            </div>
+                            ${isOwn ? `<button class="comment-delete-btn" data-id="${comment.id}" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:1rem;padding:0.2rem;display:inline-flex;align-items:center;" title="Yorumu Sil"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>` : ''}
+                        </div>
+                        <div style="font-size:0.75rem;color:#94a3b8;margin-top:0.2rem;">${date}</div>
+                    </div>
+                `;
+
+                if (isOwn) {
+                    commentDiv.querySelector('.comment-delete-btn').addEventListener('click', async () => {
+                        try {
+                            await api.deleteComment(comment.id);
+                            await this.renderComments(postId);
+                        } catch (err) {
+                            console.error("Yorum silinirken hata:", err);
+                        }
+                    });
+                }
+
+                commentsList.appendChild(commentDiv);
+            });
+
+            if (commentsSection) commentsSection.scrollTop = commentsSection.scrollHeight;
+        } catch (err) {
+            commentsList.innerHTML = '<p style="color:red;text-align:center;">Yorumlar yüklenemedi.</p>';
+            console.error(err);
+        }
+    },
+
+    showPostDetails(post) {
+        if (!post) return;
+        
+        this.currentPost = post;
+        
+        const detailsModal = document.getElementById('post-details-modal');
+        const detailImg = document.getElementById('detail-image');
+        const detailUsername = document.getElementById('detail-username');
+        const detailUserInitial = document.getElementById('detail-user-initial');
+        const detailAvatarContainer = detailUserInitial ? detailUserInitial.parentElement : null;
+        const detailDesc = document.getElementById('detail-description');
+        const detailLikesCount = document.getElementById('detail-likes-count');
+        const detailLikeBtn = document.getElementById('detail-like-btn');
+        const detailDeleteBtn = document.getElementById('detail-delete-btn');
+        const commentInput = document.getElementById('comment-input');
+        
+        if (!detailsModal || !detailImg) return;
+        
+        const uname = post.users?.name || 'Kullanıcı';
+        const avatarUrl = post.users?.avatar_url || null;
+        
+        detailImg.src = post.image;
+        detailUsername.textContent = '@' + uname;
+        
+        if (detailAvatarContainer) {
+            if (avatarUrl) {
+                detailAvatarContainer.innerHTML = `<img src="${avatarUrl}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+            } else {
+                detailAvatarContainer.innerHTML = `<span id="detail-user-initial">${uname.charAt(0).toUpperCase()}</span>`;
+            }
+        }
+        
+        detailDesc.textContent = post.tag || '';
+
+        // Beğeni durumu
+        const liked = this.myLikedPostIds.has(post.id);
+        detailLikesCount.textContent = post.likes_count || 0;
+        detailLikeBtn.classList.toggle('liked', liked);
+        detailLikeBtn.style.color = liked ? 'var(--accent-color)' : 'inherit';
+        const heartSvg = detailLikeBtn.querySelector('svg');
+        if (heartSvg) heartSvg.style.fill = liked ? 'var(--accent-color)' : 'none';
+
+        detailLikeBtn.onclick = () => this._toggleLikeOnDetail(post, detailLikeBtn, detailLikesCount);
+
+        // Detay Modalında Kaydetme Butonu
+        const detailSaveBtn = document.getElementById('detail-save-btn');
+        if (detailSaveBtn) {
+            const saved = this.mySavedPostIds.has(post.id);
+            const saveSvg = detailSaveBtn.querySelector('svg');
+            if (saved) {
+                detailSaveBtn.classList.add('saved');
+                detailSaveBtn.style.color = '#e60023';
+                if (saveSvg) { saveSvg.style.fill = '#e60023'; saveSvg.style.stroke = '#e60023'; }
+            } else {
+                detailSaveBtn.classList.remove('saved');
+                detailSaveBtn.style.color = 'inherit';
+                if (saveSvg) { saveSvg.style.fill = 'none'; saveSvg.style.stroke = 'currentColor'; }
+            }
+            
+            detailSaveBtn.onclick = () => this._toggleSaveOnDetail(post, detailSaveBtn);
+        }
+
+        // Detay Modalında Takip Et Butonu
+        const detailFollowBtn = document.getElementById('detail-follow-btn');
+        const detailUnfollowBtn = document.getElementById('detail-unfollow-btn');
+        
+        if (detailFollowBtn && detailUnfollowBtn) {
+            if (!this.currentUserId || post.user_id === this.currentUserId) {
+                detailFollowBtn.style.display = 'none';
+                detailUnfollowBtn.style.display = 'none';
+            } else {
+                api.checkIsFollowing(post.user_id).then(isFollowing => {
+                    if (isFollowing) {
+                        detailFollowBtn.style.display = 'none';
+                        detailUnfollowBtn.style.display = 'inline-flex';
+                    } else {
+                        detailFollowBtn.style.display = 'inline-flex';
+                        detailUnfollowBtn.style.display = 'none';
+                    }
+                }).catch(err => console.error("Takip durumu kontrol edilemedi", err));
+
+                detailFollowBtn.onclick = async () => {
+                    detailFollowBtn.disabled = true;
+                    detailFollowBtn.textContent = '...';
+                    try {
+                        await api.followUser(post.user_id);
+                        detailFollowBtn.style.display = 'none';
+                        detailUnfollowBtn.style.display = 'inline-flex';
+                    } catch(e) {
+                        console.error(e);
+                    } finally {
+                        detailFollowBtn.disabled = false;
+                        detailFollowBtn.textContent = 'Takip Et';
+                    }
+                };
+                
+                detailUnfollowBtn.onclick = async () => {
+                    detailUnfollowBtn.disabled = true;
+                    detailUnfollowBtn.textContent = '...';
+                    try {
+                        await api.unfollowUser(post.user_id);
+                        detailUnfollowBtn.style.display = 'none';
+                        detailFollowBtn.style.display = 'inline-flex';
+                    } catch(e) {
+                        console.error(e);
+                    } finally {
+                        detailUnfollowBtn.disabled = false;
+                        detailUnfollowBtn.textContent = 'Takibi Bırak';
+                    }
+                };
+            }
+        }
+
+        // Silme butonu göster/gizle
+        if (detailDeleteBtn) {
+            const isOwn = this.currentUserId && post.user_id === this.currentUserId;
+            const isAdmin = this.currentUserEmail === 'fatihsahinbm@gmail.com';
+            if (isOwn || isAdmin) {
+                detailDeleteBtn.style.display = 'inline-flex';
+                detailDeleteBtn.onclick = (ev) => {
+                    ev.stopPropagation();
+                    this.confirmAndDelete(post.id, post.image);
+                };
+            } else {
+                detailDeleteBtn.style.display = 'none';
+            }
+        }
+
+        if (commentInput) commentInput.value = '';
+        this.renderComments(post.id);
+        detailsModal.classList.add('active');
+    },
+
+    async openPostById(postId) {
+        if (!postId) return;
+        let post = this.feedData.find(p => p.id === postId);
+        if (!post) {
+            post = await api.getPostById(postId);
+        }
+        if (post) {
+            this.showPostDetails(post);
+        }
+    },
 
     async init() {
         console.log("Social modülü yüklendi.");
-        this.currentUserId = await api.getCurrentUserId();
+        const user = await auth.getCurrentUser();
+        this.currentUserId = user ? user.id : null;
+        this.currentUserEmail = user ? user.email : null;
         
         // Önce beğeni ve kaydetmeleri alalım, sonra feed'i yükleyelim ki
         // render ederken Set'ler dolu olsun.
@@ -38,12 +249,21 @@ export const social = {
             const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
             window.history.replaceState({path: cleanUrl}, '', cleanUrl);
         }
+
+        const viewPostId = urlParams.get('post');
+        if (viewPostId) {
+            await this.openPostById(viewPostId);
+            
+            // Parametreyi URL'den temizle
+            const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+            window.history.replaceState({path: cleanUrl}, '', cleanUrl);
+        }
     },
 
     async loadFeed() {
         try {
             this.feedData = await api.getSocialFeed();
-            ui.renderSocialFeed(this.feedData, this.currentUserId, this.mySavedPostIds);
+            ui.renderSocialFeed(this.feedData, this.currentUserId, this.mySavedPostIds, this.currentUserEmail, this.myLikedPostIds);
         } catch (error) {
             console.error("Sosyal akış yüklenirken hata:", error);
             const container = document.getElementById('social-feed-container');
@@ -79,21 +299,11 @@ export const social = {
         const addBtn = document.getElementById('add-post-btn');
         const modal = document.getElementById('add-post-modal');
         const closeBtn = document.getElementById('close-post-modal');
-        const cancelBtn = document.getElementById('cancel-post-btn');
         const form = document.getElementById('add-post-form');
         const imageInput = document.getElementById('post-image');
-        const uploadZone = document.getElementById('post-upload-zone');
-        const uploadPlaceholder = document.getElementById('upload-placeholder');
         const imagePreview = document.getElementById('post-image-preview');
         const previewImg = imagePreview ? imagePreview.querySelector('img') : null;
         const submitBtn = document.getElementById('submit-post-btn');
-
-        const resetForm = () => {
-            if (form) form.reset();
-            if (imagePreview) imagePreview.style.display = 'none';
-            if (uploadPlaceholder) uploadPlaceholder.style.display = 'flex';
-            if (imageInput) imageInput.value = '';
-        };
 
         if (addBtn && modal) {
             addBtn.addEventListener('click', () => modal.classList.add('active'));
@@ -102,34 +312,23 @@ export const social = {
         if (closeBtn && modal) {
             closeBtn.addEventListener('click', () => {
                 modal.classList.remove('active');
-                resetForm();
-            });
-        }
-
-        if (cancelBtn && modal) {
-            cancelBtn.addEventListener('click', () => {
-                modal.classList.remove('active');
-                resetForm();
+                if (form) form.reset();
+                if (imagePreview) imagePreview.style.display = 'none';
             });
         }
 
         window.addEventListener('click', (e) => {
             if (e.target === modal) {
                 modal.classList.remove('active');
-                resetForm();
+                if (form) form.reset();
+                if (imagePreview) imagePreview.style.display = 'none';
             }
             if (e.target === document.getElementById('post-details-modal')) {
                 document.getElementById('post-details-modal').classList.remove('active');
             }
         });
 
-        if (uploadZone && imageInput) {
-            uploadZone.addEventListener('click', () => {
-                imageInput.click();
-            });
-        }
-
-        if (imageInput && imagePreview && previewImg && uploadPlaceholder) {
+        if (imageInput && imagePreview && previewImg) {
             imageInput.addEventListener('change', (e) => {
                 const file = e.target.files[0];
                 if (file) {
@@ -137,12 +336,10 @@ export const social = {
                     reader.onload = (event) => {
                         previewImg.src = event.target.result;
                         imagePreview.style.display = 'block';
-                        uploadPlaceholder.style.display = 'none';
                     };
                     reader.readAsDataURL(file);
                 } else {
                     imagePreview.style.display = 'none';
-                    uploadPlaceholder.style.display = 'flex';
                 }
             });
         }
@@ -151,8 +348,7 @@ export const social = {
             form.addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const file = imageInput.files[0];
-                const desc = document.getElementById('post-description').value.trim();
-                const hashtags = document.getElementById('post-hashtags') ? document.getElementById('post-hashtags').value.trim() : '';
+                const desc = document.getElementById('post-description').value;
                 if (!file || !desc) return;
 
                 const originalText = submitBtn.innerHTML;
@@ -160,13 +356,13 @@ export const social = {
                 submitBtn.disabled = true;
 
                 try {
-                    const fullDesc = hashtags ? `${desc}\n\n${hashtags}` : desc;
                     // Sosyal paylaşımlar için ayrı bucket kullan
                     const imageUrl = await api.uploadImage(file, 'social_images');
-                    await api.shareOutfit({ description: fullDesc, image: imageUrl, style: 'social' });
+                    await api.shareOutfit({ description: desc, image: imageUrl, style: 'social' });
 
                     modal.classList.remove('active');
-                    resetForm();
+                    form.reset();
+                    if (imagePreview) imagePreview.style.display = 'none';
 
                     await this.loadFeed();
                     ui.showToast('Gönderi başarıyla paylaşıldı!', 'success');
@@ -202,63 +398,7 @@ export const social = {
 
         // Yorumları DB'den çekip render et
         const renderComments = async (postId) => {
-            if (!commentsList) return;
-            commentsList.innerHTML = '<p style="color: var(--text-muted); font-size: 0.9rem; text-align:center;">Yükleniyor...</p>';
-            try {
-                const comments = await api.getComments(postId);
-                commentsList.innerHTML = '';
-
-                if (comments.length === 0) {
-                    commentsList.innerHTML = '<p style="color: var(--text-muted); font-size: 0.95rem; font-style: italic; text-align: center; margin-top: 2rem;">Henüz yorum yok. İlk yorumu sen yap!</p>';
-                    return;
-                }
-
-                comments.forEach(comment => {
-                    const uname = comment.users?.name || 'Kullanıcı';
-                    const avatarUrl = comment.users?.avatar_url || null;
-                    const isOwn = comment.user_id === this.currentUserId;
-                    const date = new Date(comment.created_at).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
-
-                    const avatarHtml = avatarUrl 
-                        ? `<img src="${avatarUrl}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`
-                        : `${uname.charAt(0).toUpperCase()}`;
-
-                    const commentDiv = document.createElement('div');
-                    commentDiv.className = 'comment-item';
-                    commentDiv.style.cssText = 'display:flex; gap:0.8rem; align-items:flex-start; margin-bottom:0.8rem;';
-                    commentDiv.innerHTML = `
-                        <div style="width:32px;height:32px;border-radius:50%;background:var(--primary-color);color:white;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:0.85rem;flex-shrink:0;overflow:hidden;">${avatarHtml}</div>
-                        <div style="flex:1;">
-                            <div style="display:flex;justify-content:space-between;align-items:center;">
-                                <div>
-                                    <span style="font-weight:700;font-size:0.95rem;color:var(--text-primary);margin-right:0.5rem;">${uname}</span>
-                                    <span style="font-size:0.95rem;color:var(--text-secondary);word-break:break-word;">${comment.text}</span>
-                                </div>
-                                ${isOwn ? `<button class="comment-delete-btn" data-id="${comment.id}" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:1rem;padding:0.2rem;display:inline-flex;align-items:center;" title="Yorumu Sil"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>` : ''}
-                            </div>
-                            <div style="font-size:0.75rem;color:#94a3b8;margin-top:0.2rem;">${date}</div>
-                        </div>
-                    `;
-
-                    if (isOwn) {
-                        commentDiv.querySelector('.comment-delete-btn').addEventListener('click', async () => {
-                            try {
-                                await api.deleteComment(comment.id);
-                                await renderComments(postId);
-                            } catch (err) {
-                                console.error("Yorum silinirken hata:", err);
-                            }
-                        });
-                    }
-
-                    commentsList.appendChild(commentDiv);
-                });
-
-                if (commentsSection) commentsSection.scrollTop = commentsSection.scrollHeight;
-            } catch (err) {
-                commentsList.innerHTML = '<p style="color:red;text-align:center;">Yorumlar yüklenemedi.</p>';
-                console.error(err);
-            }
+            await social.renderComments(postId);
         };
 
         if (commentTriggerBtn && commentInput) {
@@ -268,13 +408,13 @@ export const social = {
         if (sendCommentBtn && commentInput && commentsList) {
             const addComment = async () => {
                 const text = commentInput.value.trim();
-                if (!text || !currentPost) return;
+                if (!text || !social.currentPost) return;
 
                 sendCommentBtn.disabled = true;
                 try {
-                    await api.addComment(currentPost.id, text);
+                    await api.addComment(social.currentPost.id, text);
                     commentInput.value = '';
-                    await renderComments(currentPost.id);
+                    await renderComments(social.currentPost.id);
                 } catch (err) {
                     console.error("Yorum eklenemedi:", err);
                     ui.showToast('Yorum eklenemedi.', 'error');
@@ -288,6 +428,8 @@ export const social = {
                 if (e.key === 'Enter') { e.preventDefault(); addComment(); }
             });
         }
+
+        let clickTimeout = null;
 
         // Event delegation: feed kartı tıklamaları
         if (feedContainer) {
@@ -365,125 +507,42 @@ export const social = {
 
                 if (e.target.closest('.comment-btn')) return;
 
-                // Kart tıklaması → detay modalı aç
+                // Kart tıklaması → detay modalı aç (çift tıklamayla çakışmaması için geciktiriyoruz)
                 const item = e.target.closest('.feed-item');
                 if (item && detailsModal) {
-                    const index = item.getAttribute('data-index');
-                    const post = this.feedData[index];
-                    if (!post) return;
-
-                    currentPost = post;
-                    const uname = post.users?.name || 'Kullanıcı';
-                    const avatarUrl = post.users?.avatar_url || null;
-                    
-                    detailImg.src = post.image;
-                    detailUsername.textContent = '@' + uname;
-                    
-                    if (detailAvatarContainer) {
-                        if (avatarUrl) {
-                            detailAvatarContainer.innerHTML = `<img src="${avatarUrl}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
-                        } else {
-                            detailAvatarContainer.innerHTML = `<span id="detail-user-initial">${uname.charAt(0).toUpperCase()}</span>`;
-                        }
-                    }
-                    
-                    detailDesc.textContent = post.tag || '';
-
-                    // Beğeni durumu
-                    const liked = this.myLikedPostIds.has(post.id);
-                    detailLikesCount.textContent = post.likes_count || 0;
-                    detailLikeBtn.classList.toggle('liked', liked);
-                    detailLikeBtn.style.color = liked ? 'var(--accent-color)' : 'inherit';
-                    const heartSvg = detailLikeBtn.querySelector('svg');
-                    if (heartSvg) heartSvg.style.fill = liked ? 'var(--accent-color)' : 'none';
-
-                    detailLikeBtn.onclick = () => this._toggleLikeOnDetail(post, detailLikeBtn, detailLikesCount);
-
-                    // Detay Modalında Kaydetme Butonu
-                    const detailSaveBtn = document.getElementById('detail-save-btn');
-                    if (detailSaveBtn) {
-                        const saved = this.mySavedPostIds.has(post.id);
-                        const saveSvg = detailSaveBtn.querySelector('svg');
-                        if (saved) {
-                            detailSaveBtn.classList.add('saved');
-                            detailSaveBtn.style.color = '#e60023';
-                            if (saveSvg) { saveSvg.style.fill = '#e60023'; saveSvg.style.stroke = '#e60023'; }
-                        } else {
-                            detailSaveBtn.classList.remove('saved');
-                            detailSaveBtn.style.color = 'inherit';
-                            if (saveSvg) { saveSvg.style.fill = 'none'; saveSvg.style.stroke = 'currentColor'; }
-                        }
-                        
-                        detailSaveBtn.onclick = () => this._toggleSaveOnDetail(post, detailSaveBtn);
+                    if (clickTimeout) {
+                        clearTimeout(clickTimeout);
+                        clickTimeout = null;
+                        return;
                     }
 
-                    // Detay Modalında Takip Et Butonu
-                    const detailFollowBtn = document.getElementById('detail-follow-btn');
-                    const detailUnfollowBtn = document.getElementById('detail-unfollow-btn');
-                    
-                    if (detailFollowBtn && detailUnfollowBtn) {
-                        if (!this.currentUserId || post.user_id === this.currentUserId) {
-                            detailFollowBtn.style.display = 'none';
-                            detailUnfollowBtn.style.display = 'none';
-                        } else {
-                            api.checkIsFollowing(post.user_id).then(isFollowing => {
-                                if (isFollowing) {
-                                    detailFollowBtn.style.display = 'none';
-                                    detailUnfollowBtn.style.display = 'inline-flex';
-                                } else {
-                                    detailFollowBtn.style.display = 'inline-flex';
-                                    detailUnfollowBtn.style.display = 'none';
-                                }
-                            }).catch(err => console.error("Takip durumu kontrol edilemedi", err));
+                    clickTimeout = setTimeout(() => {
+                        clickTimeout = null;
+                        const index = item.getAttribute('data-index');
+                        const post = this.feedData[index];
+                        if (!post) return;
 
-                            detailFollowBtn.onclick = async () => {
-                                detailFollowBtn.disabled = true;
-                                detailFollowBtn.textContent = '...';
-                                try {
-                                    await api.followUser(post.user_id);
-                                    detailFollowBtn.style.display = 'none';
-                                    detailUnfollowBtn.style.display = 'inline-flex';
-                                } catch(e) {
-                                    console.error(e);
-                                } finally {
-                                    detailFollowBtn.disabled = false;
-                                    detailFollowBtn.textContent = 'Takip Et';
-                                }
-                            };
-                            
-                            detailUnfollowBtn.onclick = async () => {
-                                detailUnfollowBtn.disabled = true;
-                                detailUnfollowBtn.textContent = '...';
-                                try {
-                                    await api.unfollowUser(post.user_id);
-                                    detailUnfollowBtn.style.display = 'none';
-                                    detailFollowBtn.style.display = 'inline-flex';
-                                } catch(e) {
-                                    console.error(e);
-                                } finally {
-                                    detailUnfollowBtn.disabled = false;
-                                    detailUnfollowBtn.textContent = 'Takibi Bırak';
-                                }
-                            };
+                        social.showPostDetails(post);
+                    }, 250);
+                }
+            });
+
+            // Event delegation: feed kartı çift tıklamaları (beğenme aksiyonu)
+            feedContainer.addEventListener('dblclick', async (e) => {
+                const item = e.target.closest('.feed-item');
+                if (item) {
+                    const imgWrapper = e.target.closest('.feed-img-wrapper');
+                    if (imgWrapper) {
+                        const postId = item.getAttribute('data-post-id');
+                        const likeBtn = item.querySelector('.pin-like-btn');
+                        if (postId && likeBtn) {
+                            const isLiked = this.myLikedPostIds.has(postId);
+                            if (!isLiked) {
+                                await this._toggleLikeOnCard(likeBtn, postId);
+                            }
+                            this._showHeartPopupAnimation(imgWrapper);
                         }
                     }
-
-                    // Silme butonu göster/gizle
-                    if (detailDeleteBtn) {
-                        if (this.currentUserId && post.user_id === this.currentUserId) {
-                            detailDeleteBtn.style.display = 'inline-flex';
-                            detailDeleteBtn.onclick = (ev) => {
-                                ev.stopPropagation();
-                                this.confirmAndDelete(post.id, post.image);
-                            };
-                        } else {
-                            detailDeleteBtn.style.display = 'none';
-                        }
-                    }
-
-                    if (commentInput) commentInput.value = '';
-                    renderComments(post.id);
-                    detailsModal.classList.add('active');
                 }
             });
         }
@@ -574,7 +633,7 @@ export const social = {
         if (detailImg) {
             detailImg.style.cursor = 'crosshair';
             detailImg.addEventListener('click', async (e) => {
-                if (!currentPost?.image) return;
+                if (!social.currentPost?.image) return;
 
                 const clickedRegion = getClickedRegion(e);
                 if (lensHint) lensHint.style.display = 'none';
@@ -582,7 +641,7 @@ export const social = {
 
                 try {
                     // Gardıroba ekle için kırpılmış görsel hazırla (arka planda)
-                    const fullBase64 = await this._imageUrlToBase64(currentPost.image);
+                    const fullBase64 = await this._imageUrlToBase64(social.currentPost.image);
                     const croppedBase64 = await cropRegion(fullBase64, clickedRegion);
 
                     // Kırpılan görseli Supabase'e yükle (gardıroba ekle için)
@@ -591,7 +650,7 @@ export const social = {
                     const file = new File([blob], `lens-${Date.now()}.jpg`, { type: 'image/jpeg' });
                     const croppedPublicUrl = await api.uploadImage(file, 'social_images');
 
-                    this._showLensResult(currentPost.image, croppedPublicUrl, clickedRegion, lensModal, lensBody);
+                    this._showLensResult(social.currentPost.image, croppedPublicUrl, clickedRegion, lensModal, lensBody);
                 } catch (err) {
                     console.error('Lens hatası:', err);
                     if (ui.showToast) ui.showToast('Kıyafet analiz edilemedi.', 'error');
@@ -672,6 +731,8 @@ export const social = {
 
         document.getElementById('lens-add-wardrobe-btn')?.addEventListener('click', () => {
             sessionStorage.setItem('pendingSocialImage', originalImageUrl);
+            sessionStorage.setItem('pendingSocialCategory', catInfo.category);
+            sessionStorage.setItem('pendingSocialLabel', catInfo.label);
             window.location.href = 'wardrobe.html';
         });
     },
@@ -679,17 +740,47 @@ export const social = {
     async _toggleLikeOnCard(btn, postId) {
         const liked = this.myLikedPostIds.has(postId);
         const countEl = btn.querySelector('.like-count');
+        const heartSvg = btn.querySelector('svg');
         try {
             if (liked) {
                 await api.unlikePost(postId);
                 this.myLikedPostIds.delete(postId);
                 if (countEl) countEl.textContent = Math.max(0, parseInt(countEl.textContent) - 1);
                 btn.classList.remove('liked');
+                btn.style.color = 'inherit';
+                if (heartSvg) {
+                    heartSvg.setAttribute('fill', 'none');
+                    heartSvg.setAttribute('stroke', 'currentColor');
+                }
             } else {
                 await api.likePost(postId);
                 this.myLikedPostIds.add(postId);
                 if (countEl) countEl.textContent = parseInt(countEl.textContent || 0) + 1;
                 btn.classList.add('liked');
+                btn.style.color = 'var(--accent-color)';
+                if (heartSvg) {
+                    heartSvg.setAttribute('fill', 'var(--accent-color)');
+                    heartSvg.setAttribute('stroke', 'var(--accent-color)');
+                }
+            }
+
+            // Eğer detay modalı aktifse ve açık olan post bu ise orayı da güncelle
+            const detailsModal = document.getElementById('post-details-modal');
+            if (detailsModal && detailsModal.classList.contains('active')) {
+                const detailLikeBtn = document.getElementById('detail-like-btn');
+                const detailLikesCount = document.getElementById('detail-likes-count');
+                if (detailLikeBtn && detailLikesCount) {
+                    const detailHeart = detailLikeBtn.querySelector('svg');
+                    const likedNow = this.myLikedPostIds.has(postId);
+                    detailLikeBtn.classList.toggle('liked', likedNow);
+                    detailLikeBtn.style.color = likedNow ? 'var(--accent-color)' : 'inherit';
+                    if (detailHeart) {
+                        detailHeart.style.fill = likedNow ? 'var(--accent-color)' : 'none';
+                        detailHeart.style.stroke = likedNow ? 'var(--accent-color)' : 'currentColor';
+                    }
+                    const currentCount = parseInt(detailLikesCount.textContent || 0);
+                    detailLikesCount.textContent = likedNow ? currentCount + 1 : Math.max(0, currentCount - 1);
+                }
             }
         } catch (err) {
             console.error("Beğeni hatası:", err);
@@ -706,18 +797,41 @@ export const social = {
                 countEl.textContent = Math.max(0, parseInt(countEl.textContent) - 1);
                 btn.classList.remove('liked');
                 btn.style.color = 'inherit';
-                if (heartSvg) { heartSvg.style.fill = 'none'; heartSvg.style.transform = 'scale(1)'; }
+                if (heartSvg) { heartSvg.style.fill = 'none'; heartSvg.style.stroke = 'currentColor'; heartSvg.style.transform = 'scale(1)'; }
             } else {
                 await api.likePost(post.id);
                 this.myLikedPostIds.add(post.id);
                 countEl.textContent = parseInt(countEl.textContent || 0) + 1;
                 btn.classList.add('liked');
                 btn.style.color = 'var(--accent-color)';
-                if (heartSvg) { heartSvg.style.fill = 'var(--accent-color)'; heartSvg.style.transform = 'scale(1.15)'; }
+                if (heartSvg) { heartSvg.style.fill = 'var(--accent-color)'; heartSvg.style.stroke = 'var(--accent-color)'; heartSvg.style.transform = 'scale(1.15)'; }
+            }
+
+            // Grid'deki ilgili kartı da güncelle
+            const cardLikeBtn = document.querySelector(`.pin-like-btn[data-post-id="${post.id}"]`);
+            if (cardLikeBtn) {
+                const cardHeart = cardLikeBtn.querySelector('svg');
+                const likedNow = this.myLikedPostIds.has(post.id);
+                cardLikeBtn.classList.toggle('liked', likedNow);
+                cardLikeBtn.style.color = likedNow ? 'var(--accent-color)' : 'inherit';
+                if (cardHeart) {
+                    cardHeart.setAttribute('fill', likedNow ? 'var(--accent-color)' : 'none');
+                    cardHeart.setAttribute('stroke', likedNow ? 'var(--accent-color)' : 'currentColor');
+                }
             }
         } catch (err) {
             console.error("Beğeni hatası:", err);
         }
+    },
+
+    _showHeartPopupAnimation(container) {
+        const heart = document.createElement('div');
+        heart.className = 'heart-pop-animation';
+        heart.innerHTML = `<svg width="90" height="90" viewBox="0 0 24 24" fill="#f43f5e" stroke="#ffffff" stroke-width="1.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>`;
+        container.appendChild(heart);
+        setTimeout(() => {
+            heart.remove();
+        }, 850);
     },
 
     async _toggleSaveOnDetail(post, btn) {

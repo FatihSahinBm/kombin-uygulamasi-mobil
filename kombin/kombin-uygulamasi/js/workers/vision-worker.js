@@ -43,10 +43,10 @@ const transMap = {
 // Belirli bir ana kategoriye göre detaylı analiz yapan yardımcı fonksiyon.
 // "focusCategory" gönderildiğinde veya ön analiz "tek parça" bulduğunda çalışır.
 // ──────────────────────────────────────────────────────────────────
-async function analyzeForCategory(classifier, imageBase64, mainCat) {
+async function analyzeForCategory(classifier, imageBase64, mainCat, analysisId) {
     const results = { mainCategory: mainCat };
 
-    self.postMessage({ status: 'analyzing', message: 'Görselin detayları (Kalıp, Doku, Stil) çıkartılıyor... (Aşama 2)' });
+    self.postMessage({ status: 'analyzing', message: 'Görselin detayları (Kalıp, Doku, Stil) çıkartılıyor... (Aşama 2)', analysisId });
 
     let dynamicClasses = {
         category: [],
@@ -90,18 +90,56 @@ async function analyzeForCategory(classifier, imageBase64, mainCat) {
 }
 
 // ──────────────────────────────────────────────────────────────────
-// Ana mesaj dinleyicisi
+// Sıralı Mesaj Kuyruğu (ONNX Runtime'ın çakışmasını engellemek için)
 // ──────────────────────────────────────────────────────────────────
-self.addEventListener('message', async (event) => {
-    const { imageBase64, focusCategory } = event.data;
+const messageQueue = [];
+let isProcessingQueue = false;
+
+self.addEventListener('message', (event) => {
+    const { focusCategory } = event.data;
+    
+    // Eğer yeni gelen istek bir kırpma analizi ise (focusCategory varsa),
+    // kuyruktaki diğer henüz işlenmemiş eski kırpma isteklerini temizleyerek kaynak tasarrufu yapalım.
+    if (focusCategory) {
+        for (let i = messageQueue.length - 1; i >= 0; i--) {
+            if (messageQueue[i].focusCategory) {
+                messageQueue.splice(i, 1);
+            }
+        }
+    }
+    
+    messageQueue.push(event.data);
+    processQueue();
+});
+
+async function processQueue() {
+    if (isProcessingQueue) return;
+    if (messageQueue.length === 0) return;
+
+    isProcessingQueue = true;
+    const taskData = messageQueue.shift();
+
+    try {
+        await handleMessage(taskData);
+    } catch (err) {
+        console.error("Queue process error:", err);
+    } finally {
+        isProcessingQueue = false;
+        // Sıradaki isteği işle
+        processQueue();
+    }
+}
+
+async function handleMessage(data) {
+    const { imageBase64, focusCategory, isCropped, analysisId } = data;
     if (!imageBase64) return;
 
     try {
-        self.postMessage({ status: 'loading', message: 'Yapay zeka modeli yükleniyor... (Sadece ilk seferde vakit alır)' });
+        self.postMessage({ status: 'loading', message: 'Yapay zeka modeli yükleniyor... (Sadece ilk seferde vakit alır)', analysisId });
         
         let classifier = await VisionPipeline.getInstance(data => {
             if (data.status === 'progress') {
-                self.postMessage({ status: 'progress', message: `Model Yükleniyor: %${Math.round(data.progress || 0)}` });
+                self.postMessage({ status: 'progress', message: `Model Yükleniyor: %${Math.round(data.progress || 0)}`, analysisId });
             }
         });
 
@@ -110,16 +148,42 @@ self.addEventListener('message', async (event) => {
         //          kullanıcı bir parça seçti, direkt o parçayı analiz et.
         // ────────────────────────────────────────────────────────
         if (focusCategory) {
-            self.postMessage({ status: 'analyzing', message: `Seçilen parça analiz ediliyor: ${focusCategory}...` });
-            const results = await analyzeForCategory(classifier, imageBase64, focusCategory);
-            self.postMessage({ status: 'complete', results });
+            self.postMessage({ status: 'analyzing', message: `Seçilen parça analiz ediliyor: ${focusCategory}...`, analysisId });
+            const results = await analyzeForCategory(classifier, imageBase64, focusCategory, analysisId);
+            self.postMessage({ status: 'complete', results, analysisId });
+            return;
+        }
+
+        // Eğer kırpılmış parça ise (isCropped), tam kombin kontrolünü atla,
+        // direkt tek parça analizine geç.
+        if (isCropped) {
+            self.postMessage({ status: 'analyzing', message: 'Görsel piksel piksel inceleniyor... (Aşama 1: Ana Kategori)', analysisId });
+
+            const mainCategories = [
+                'a photo of a top garment like a t-shirt or sweater', 
+                'a photo of outerwear like a winter coat or leather jacket', 
+                'a photo of a bottom garment like pants or shorts', 
+                'a photo of footwear like shoes or boots', 
+                'a photo of an accessory like a bag or hat'
+            ];
+            const mainCatOutput = await classifier(imageBase64, mainCategories);
+            const mainCatRaw = mainCatOutput[0].label;
+            
+            let mainCat = 'top garment';
+            if (mainCatRaw.includes('outerwear')) mainCat = 'outerwear';
+            else if (mainCatRaw.includes('bottom garment')) mainCat = 'bottom garment';
+            else if (mainCatRaw.includes('footwear')) mainCat = 'footwear';
+            else if (mainCatRaw.includes('accessory')) mainCat = 'accessory';
+
+            const results = await analyzeForCategory(classifier, imageBase64, mainCat, analysisId);
+            self.postMessage({ status: 'complete', results, analysisId });
             return;
         }
 
         // ────────────────────────────────────────────────────────
         // DURUM 2: İlk yükleme – Ön Analiz (Tek parça mı, Tam kombin mi?)
         // ────────────────────────────────────────────────────────
-        self.postMessage({ status: 'analyzing', message: 'Görsel inceleniyor... (Ön Analiz: Tek parça mı, tam kombin mi?)' });
+        self.postMessage({ status: 'analyzing', message: 'Görsel inceleniyor... (Ön Analiz: Tek parça mı, tam kombin mi?)', analysisId });
 
         const outfitCheck = [
             'a photo of a single clothing item on a plain background',
@@ -130,7 +194,7 @@ self.addEventListener('message', async (event) => {
 
         if (isFullOutfit) {
             // ── Çoklu parça algılandı: hangi parçalar var kontrol et ──
-            self.postMessage({ status: 'analyzing', message: 'Birden fazla parça algılandı, parçalar tespit ediliyor...' });
+            self.postMessage({ status: 'analyzing', message: 'Birden fazla parça algılandı, parçalar tespit ediliyor...', analysisId });
 
             // Her bir ana kategori için ayrı ayrı güven skoru al
             const categoryChecks = [
@@ -169,7 +233,8 @@ self.addEventListener('message', async (event) => {
                 self.postMessage({ 
                     status: 'multi-detect', 
                     detectedParts: detectedParts,
-                    message: `Bu fotoğrafta ${detectedParts.length} farklı kıyafet parçası algılandı!`
+                    message: `Bu fotoğrafta ${detectedParts.length} farklı kıyafet parçası algılandı!`,
+                    analysisId
                 });
                 return;
             }
@@ -178,7 +243,7 @@ self.addEventListener('message', async (event) => {
         // ────────────────────────────────────────────────────────
         // DURUM 3: Tek parça → Normal analiz akışı
         // ────────────────────────────────────────────────────────
-        self.postMessage({ status: 'analyzing', message: 'Görsel piksel piksel inceleniyor... (Aşama 1: Ana Kategori)' });
+        self.postMessage({ status: 'analyzing', message: 'Görsel piksel piksel inceleniyor... (Aşama 1: Ana Kategori)', analysisId });
 
         const mainCategories = [
             'a photo of a top garment like a t-shirt or sweater', 
@@ -196,11 +261,11 @@ self.addEventListener('message', async (event) => {
         else if (mainCatRaw.includes('footwear')) mainCat = 'footwear';
         else if (mainCatRaw.includes('accessory')) mainCat = 'accessory';
 
-        const results = await analyzeForCategory(classifier, imageBase64, mainCat);
-        self.postMessage({ status: 'complete', results });
+        const results = await analyzeForCategory(classifier, imageBase64, mainCat, analysisId);
+        self.postMessage({ status: 'complete', results, analysisId });
 
     } catch (error) {
         console.error("Worker Hatası:", error);
-        self.postMessage({ status: 'error', message: error.toString() });
+        self.postMessage({ status: 'error', message: error.toString(), analysisId });
     }
-});
+}

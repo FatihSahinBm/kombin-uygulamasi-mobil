@@ -4,8 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kombin.AI | Kombin Atölyesi</title>
+    <link rel="icon" type="image/jpeg" href="logo.jpg">
     <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/animations.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script type="module">
         import { auth } from './js/auth.js';
         auth.requireAuth();
@@ -15,14 +17,17 @@
 <body>
     <nav class="navbar">
         <div class="nav-container">
-            <div class="logo">Kombin.AI</div>
+            <a href="dashboard.html" class="logo" style="display: flex; align-items: center; gap: 8px;">
+                <img src="logo.jpg" alt="Logo" style="width: 32px; height: 32px; object-fit: cover; border-radius: 8px;">
+                <span>Kombin.AI</span>
+            </a>
             <ul class="nav-links">
                 <li><a href="dashboard.html">Ana Sayfa</a></li>
-                <li><a href="wardrobe.html">Gardırobum</a></li>
                 <li><a href="outfits.html" class="active">Kombin Oluştur</a></li>
                 <li><a href="social.html">Sosyal Akış</a></li>
+                <li><a href="wardrobe.html">Gardırobum</a></li>
                 <li><a href="profile.html">Profil</a></li>
-                <li><a href="#" onclick="logout(); return false;" style="color: var(--accent-color);">Çıkış Yap</a></li>
+                <li><a href="#" class="nav-logout" onclick="logout(); return false;">Çıkış</a></li>
             </ul>
         </div>
     </nav>
@@ -49,10 +54,20 @@
                 </div>
 
                 <div class="form-group" style="margin-top: 1rem;">
-                    <label>Bütçe Aralığı (TL)</label>
-                    <div style="display: flex; gap: 10px;">
-                        <input type="number" id="budget-min" class="form-control" placeholder="Min TL" min="0" value="0">
-                        <input type="number" id="budget-max" class="form-control" placeholder="Max TL" min="0" value="5000">
+                    <label style="display:flex; align-items:center; gap:8px; cursor:pointer; user-select:none;">
+                        <input type="checkbox" id="budget-enabled" style="width:16px; height:16px; accent-color:var(--primary-color); cursor:pointer;" onchange="
+                            const wrap = document.getElementById('budget-inputs');
+                            const min = document.getElementById('budget-min');
+                            const max = document.getElementById('budget-max');
+                            wrap.style.opacity = this.checked ? '1' : '0.4';
+                            min.disabled = !this.checked;
+                            max.disabled = !this.checked;
+                        ">
+                        <span>Bütçe Aralığı (TL) <span style="font-size:0.78rem; color:var(--text-muted); font-weight:400;">— İsteğe Bağlı</span></span>
+                    </label>
+                    <div id="budget-inputs" style="display: flex; gap: 10px; margin-top:0.5rem; opacity:0.4; transition:opacity 0.2s;">
+                        <input type="number" id="budget-min" class="form-control" placeholder="Min TL" min="0" value="0" disabled>
+                        <input type="number" id="budget-max" class="form-control" placeholder="Max TL" min="0" value="5000" disabled>
                     </div>
                 </div>
 
@@ -180,5 +195,6 @@
     <script src="js/api.js" type="module"></script>
     <script src="js/ui.js" type="module"></script>
     <script src="js/main.js" type="module"></script>
+    <script src="js/app-animations.js"></script>
 </body>
 </html>

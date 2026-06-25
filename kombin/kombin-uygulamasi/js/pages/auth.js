@@ -1,8 +1,33 @@
 import { auth } from '../auth.js';
 
 export const authUI = {
-    init() {
+    async init() {
         console.log("Auth UI modülü yüklendi.");
+        
+        // Eğer giriş yapılmışsa durumları kontrol edelim
+        const page = window.location.pathname.split('/').pop() || 'index.html';
+        const isLoggedIn = await auth.checkSession();
+        
+        if (isLoggedIn) {
+            if (page === 'login.html') {
+                window.location.href = 'dashboard.html';
+                return;
+            } else if (page === 'index.html' || page === '') {
+                // Landing page butonlarını güncelle
+                const navAuthLinks = document.getElementById('navAuthLinks') || document.querySelector('nav#mainNav div');
+                if (navAuthLinks) {
+                    navAuthLinks.innerHTML = `
+                        <a href="dashboard.html" class="btn btn-primary" style="padding: 0.6rem 1.5rem; font-size: 0.95rem;">Panele Git ⚡</a>
+                    `;
+                }
+                
+                const ctaPrimary = document.getElementById('ctaPrimary');
+                if (ctaPrimary) {
+                    ctaPrimary.href = 'dashboard.html';
+                    ctaPrimary.innerHTML = '✨ Panele Git';
+                }
+            }
+        }
         
         // Element tanımlamaları
         const loginForm = document.getElementById('login-form');

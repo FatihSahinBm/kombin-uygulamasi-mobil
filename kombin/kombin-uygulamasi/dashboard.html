@@ -3,169 +3,577 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kombin.AI | Mükemmel Kombinler</title>
-    <link rel="stylesheet" href="style.css?v=1.0.2">
-    <!-- Google Fonts: Inter -->
+    <title>Kombin.AI | Ana Sayfa</title>
+    <link rel="icon" type="image/jpeg" href="logo.jpg">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="css/animations.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
     <script type="module">
         import { auth } from './js/auth.js';
         auth.requireAuth();
-
         window.logout = () => auth.logout();
-        
-        // Kullanıcının yetkisi doğrulanıyor...
     </script>
+
+    <style>
+        /* ─── Reset / Base ─── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --accent: #75AADB;
+            --accent-light: #93C6E7;
+            --accent-mint: #A5D3B8;
+            --text: #2D3748;
+            --muted: #718096;
+            --border: #E2E8F0;
+            --bg: #F4F7F6;
+            --surface: #FFFFFF;
+            --radius: 20px;
+            --radius-sm: 12px;
+            --shadow: 0 4px 24px -4px rgba(45,55,72,0.10);
+            --shadow-lg: 0 16px 48px -8px rgba(45,55,72,0.14);
+            --font-head: 'Outfit', sans-serif;
+            --font-body: 'Inter', sans-serif;
+        }
+
+        /* ─── Dark Mode Overrides ─── */
+        [data-theme="dark"] {
+            --bg: #0f172a;
+            --surface: #1e293b;
+            --text: #f8fafc;
+            --muted: #94a3b8;
+            --border: #334155;
+            --shadow: 0 4px 24px -4px rgba(0,0,0,0.3);
+            --shadow-lg: 0 16px 48px -8px rgba(0,0,0,0.45);
+        }
+
+        [data-theme="dark"] .navbar {
+            background: rgba(30, 41, 59, 0.92);
+        }
+
+        [data-theme="dark"] .daily-hero-right {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        }
+
+        body {
+            font-family: var(--font-body);
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        /* ─── Navbar ─── */
+        .navbar {
+            background: rgba(255,255,255,0.92);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            height: 64px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-family: var(--font-head);
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        .logo img { width: 30px; height: 30px; border-radius: 8px; object-fit: cover; }
+
+        .nav-links {
+            display: flex;
+            list-style: none;
+            gap: 0.25rem;
+            align-items: center;
+        }
+
+        .nav-links a {
+            display: block;
+            padding: 0.45rem 0.9rem;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--muted);
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .nav-links a:hover, .nav-links a.active {
+            background: rgba(117,170,219,0.1);
+            color: var(--accent);
+        }
+
+        .nav-links .nav-logout {
+            color: #e05;
+            font-size: 0.85rem;
+        }
+
+        .mobile-menu-btn { display: none; font-size: 1.4rem; cursor: pointer; color: var(--muted); }
+
+        /* ─── Main layout ─── */
+        .main-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem 2rem 4rem;
+        }
+
+        /* ─── Daily Outfit Hero ─── */
+        .daily-hero {
+            background: var(--surface);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--border);
+            overflow: hidden;
+            margin-bottom: 1.5rem;
+        }
+
+        .daily-hero-inner {
+            display: grid;
+            grid-template-columns: 1fr 380px;
+            min-height: 220px;
+        }
+
+        .daily-hero-left {
+            padding: 2rem 2.5rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .daily-hero-top {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+
+        .welcome-block h1 {
+            font-family: var(--font-head);
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: var(--text);
+            line-height: 1.3;
+        }
+
+        .welcome-block p {
+            font-size: 0.95rem;
+            color: var(--muted);
+            margin-top: 0.3rem;
+        }
+
+        .city-weather-block {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 0.4rem;
+            flex-shrink: 0;
+        }
+
+        .weather-badge {
+            background: rgba(117,170,219,0.12);
+            color: var(--accent);
+            padding: 0.3rem 0.85rem;
+            border-radius: 100px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .city-input {
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 0.38rem 0.75rem;
+            font-size: 0.82rem;
+            font-family: var(--font-body);
+            color: var(--text);
+            background: var(--bg);
+            outline: none;
+            width: 150px;
+            transition: border-color 0.2s;
+        }
+
+        .city-input:focus { border-color: var(--accent); }
+
+        .daily-outfit-content {
+            margin-top: 1.25rem;
+        }
+
+        /* ─── Right column: outfit display ─── */
+        .daily-hero-right {
+            background: linear-gradient(135deg, #f0f7ff 0%, #e8f4ec 100%);
+            border-left: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+            min-height: 200px;
+        }
+
+        .outfit-placeholder {
+            text-align: center;
+            color: var(--muted);
+        }
+
+        .outfit-placeholder .spinner {
+            width: 28px; height: 28px;
+            border: 3px solid rgba(117,170,219,0.2);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 0.5rem;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ─── Bottom grid ─── */
+        .bottom-grid {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 1.5rem;
+        }
+
+        /* ─── Cards ─── */
+        .card {
+            background: var(--surface);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .card-header h3 {
+            font-family: var(--font-head);
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .card-body { padding: 1.5rem; }
+
+        .card-footer {
+            padding: 1rem 1.5rem;
+            border-top: 1px solid var(--border);
+        }
+
+        /* ─── Wardrobe card ─── */
+        .wardrobe-card .stat-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem 0;
+            gap: 0.25rem;
+        }
+
+        .stat-number {
+            font-family: var(--font-head);
+            font-size: 3.5rem;
+            font-weight: 700;
+            color: var(--accent);
+            line-height: 1;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: var(--muted);
+        }
+
+        /* ─── Buttons ─── */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.4rem;
+            padding: 0.65rem 1.4rem;
+            border-radius: var(--radius-sm);
+            font-family: var(--font-head);
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            text-decoration: none;
+            border: none;
+            transition: all 0.25s ease;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+            box-shadow: 0 4px 12px -2px rgba(117,170,219,0.45);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px -4px rgba(117,170,219,0.5);
+        }
+
+        .btn-secondary {
+            background: rgba(117,170,219,0.08);
+            color: var(--accent);
+            border: 1px solid rgba(117,170,219,0.25);
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: rgba(117,170,219,0.15);
+        }
+
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-block { width: 100%; }
+
+        /* ─── Create outfit quick action ─── */
+        .create-action {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-top: 1.25rem;
+        }
+
+        /* ─── Social feed ─── */
+        .feed-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 1rem;
+            padding: 1.5rem;
+        }
+
+        .link-more {
+            font-size: 0.82rem;
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .link-more:hover { text-decoration: underline; }
+
+        /* ─── Responsive ─── */
+        @media (max-width: 900px) {
+            .daily-hero-inner { grid-template-columns: 1fr; }
+            .daily-hero-right { border-left: none; border-top: 1px solid var(--border); min-height: 180px; }
+            .bottom-grid { grid-template-columns: 1fr; }
+        }
+
+        @media (max-width: 640px) {
+            .main-container { padding: 1rem 1rem 3rem; }
+            .nav-links { display: none; }
+            .mobile-menu-btn { display: block; }
+            .daily-hero-left { padding: 1.25rem; }
+            .daily-hero-top { flex-direction: column; align-items: flex-start; }
+            .city-weather-block { align-items: flex-start; }
+        }
+    </style>
 </head>
 <body>
-    <!-- Üst Navbar (Masaüstü için kalıyor, CSS ile mobilde gizlenecek) -->
-    <nav class="navbar navbar-dark">
+
+    <!-- ─── Navbar ─── -->
+    <nav class="navbar">
         <div class="nav-container">
-            <div class="logo">Kombin.AI</div>
+            <a href="dashboard.html" class="logo">
+                <img src="logo.jpg" alt="Kombin.AI">
+                <span>Kombin.AI</span>
+            </a>
             <ul class="nav-links">
                 <li><a href="dashboard.html" class="active">Ana Sayfa</a></li>
-                <li><a href="wardrobe.html" id="nav-wardrobe">Gardırobum</a></li>
                 <li><a href="outfits.html" id="nav-create-outfit">Kombin Oluştur</a></li>
                 <li><a href="social.html" id="nav-social">Sosyal Akış</a></li>
+                <li><a href="wardrobe.html" id="nav-wardrobe">Gardırobum</a></li>
                 <li><a href="profile.html">Profil</a></li>
-                <li><a href="#" onclick="logout(); return false;" style="color: var(--accent-color);">Çıkış Yap</a></li>
+                <li><a href="#" class="nav-logout" onclick="logout(); return false;">Çıkış</a></li>
             </ul>
             <div class="mobile-menu-btn">☰</div>
         </div>
     </nav>
 
-    <div class="app-dashboard-container">
-        <div class="app-dashboard-wrapper">
-            <!-- Header (Greeting + User Profile + Avatar) -->
-            <header class="app-header">
-                <div class="app-header-top">
-                    <div>
-                        <div class="app-greeting" id="app-greeting-text">İyi akşamlar 👋</div>
-                        <h1 class="app-user-name" id="app-user-name">Kullanıcı</h1>
-                    </div>
-                    <a href="profile.html" class="app-avatar-btn" id="app-avatar-btn">
-                        <div class="app-avatar-fallback" id="app-avatar-fallback">K</div>
-                    </a>
-                </div>
+    <main class="main-container">
 
-                <!-- Stats Row (Kıyafet, Kombin, Beğeni) -->
-                <div class="app-stats-row">
-                    <div class="app-stat-card" style="border-top-color: #a855f7;" onclick="window.location.href='wardrobe.html'">
-                        <span class="app-stat-icon">👗</span>
-                        <div class="app-stat-value" id="app-stat-wardrobe">0</div>
-                        <div class="app-stat-label">Kıyafet</div>
-                    </div>
-                    <div class="app-stat-card" style="border-top-color: #6366f1;" onclick="window.location.href='outfits.html'">
-                        <span class="app-stat-icon">✨</span>
-                        <div class="app-stat-value" id="app-stat-outfit">0</div>
-                        <div class="app-stat-label">Kombin</div>
-                    </div>
-                    <div class="app-stat-card" style="border-top-color: #ec4899;" onclick="window.location.href='social.html'">
-                        <span class="app-stat-icon">❤️</span>
-                        <div class="app-stat-value" id="app-stat-likes">0</div>
-                        <div class="app-stat-label">Beğeni</div>
-                    </div>
-                </div>
-            </header>
-
-            <!-- Main Dashboard Content -->
-            <main class="app-content">
-                <!-- Hızlı İşlemler -->
-                <h2 class="app-section-title">Hızlı İşlemler</h2>
-                <div class="app-action-grid">
-                    <a href="outfits.html" class="app-action-card">
-                        <div class="app-action-gradient" style="background: linear-gradient(135deg, #a855f7 0%, #6366f1 100%);">
-                            <span class="app-action-icon">✨</span>
-                            <h3 class="app-action-title">Kombin Oluştur</h3>
-                            <p class="app-action-desc">Yapay zeka ile tasarla</p>
+        <!-- ─── Daily Outfit Hero ─── -->
+        <div class="daily-hero">
+            <div class="daily-hero-inner">
+                <!-- Left: welcome + city + outfit text -->
+                <div class="daily-hero-left">
+                    <div class="daily-hero-top">
+                        <div class="welcome-block">
+                            <h1>Merhaba, <span id="user-name">Kullanıcı</span> 👋</h1>
+                            <p>Bugünün kombini hava durumuna göre hazırlandı.</p>
                         </div>
-                    </a>
-
-                    <a href="wardrobe.html" class="app-action-card">
-                        <div class="app-action-gradient" style="background: linear-gradient(135deg, #0ea5e9 0%, #6366f1 100%);">
-                            <span class="app-action-icon">👕</span>
-                            <h3 class="app-action-title">Gardırobum</h3>
-                            <p class="app-action-desc" id="app-action-wardrobe-desc">0 kıyafet</p>
+                        <div class="city-weather-block">
+                            <span class="weather-badge" id="weather-info">🌤️ Bekleniyor...</span>
+                            <input type="text" id="dashboard-city-select" list="dashboard-city-list"
+                                class="city-input" placeholder="Şehir değiştir...">
+                            <datalist id="dashboard-city-list"></datalist>
                         </div>
-                    </a>
+                    </div>
 
-                    <a href="social.html" class="app-action-card">
-                        <div class="app-action-gradient" style="background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);">
-                            <span class="app-action-icon">🔥</span>
-                            <h3 class="app-action-title">Sosyal Akış</h3>
-                            <p class="app-action-desc">İlham al</p>
+                    <div class="daily-outfit-content" id="daily-outfit-display">
+                        <div class="outfit-placeholder">
+                            <div class="spinner"></div>
+                            <p style="font-size:0.9rem;">Öneri hazırlanıyor...</p>
                         </div>
-                    </a>
+                    </div>
 
-                    <a href="profile.html" class="app-action-card">
-                        <div class="app-action-gradient" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
-                            <span class="app-action-icon">👤</span>
-                            <h3 class="app-action-title">Profilim</h3>
-                            <p class="app-action-desc">Ayarlar & tercihler</p>
-                        </div>
-                    </a>
-                </div>
-
-                <!-- Bugünkü Tarzın Section -->
-                <h2 class="app-section-title">Bugünkü Tarzın</h2>
-                <div class="app-style-scroll" id="app-style-scroll">
-                    <div class="app-style-chip active active-casual" data-style="casual">
-                        <span class="app-style-chip-text">👕 Günlük</span>
-                    </div>
-                    <div class="app-style-chip" data-style="business">
-                        <span class="app-style-chip-text">💼 İş</span>
-                    </div>
-                    <div class="app-style-chip" data-style="sport">
-                        <span class="app-style-chip-text">🏃 Sportif</span>
-                    </div>
-                    <div class="app-style-chip" data-style="streetwear">
-                        <span class="app-style-chip-text">🧢 Sokak</span>
-                    </div>
-                    <div class="app-style-chip" data-style="elegant">
-                        <span class="app-style-chip-text">🌹 Şık</span>
+                    <div class="create-action">
+                        <a href="outfits.html" class="btn btn-primary" id="create-outfit-trigger">✨ Yeni Kombin Oluştur</a>
+                        <button class="btn btn-secondary" id="daily-outfit-btn" disabled>Detayları Gör</button>
                     </div>
                 </div>
 
-                <!-- Kombin Oluştur Butonu -->
-                <button class="app-generate-btn" id="app-generate-btn">
-                    <div class="app-generate-btn-gradient">
-                        <span class="app-generate-btn-text" id="app-generate-btn-text">👕 Günlük Kombin Oluştur 🔮</span>
+                <!-- Right: visual accent panel -->
+                <div class="daily-hero-right">
+                    <div style="text-align:center; opacity:0.6;">
+                        <div style="font-size:3.5rem; line-height:1;">🌤️</div>
+                        <div style="font-size:0.78rem; margin-top:0.5rem; color: #718096; font-family:'Outfit',sans-serif; font-weight:600; letter-spacing:0.5px;">GÜNÜN KOMBİNİ</div>
                     </div>
-                </button>
-            </main>
+                </div>
+            </div>
         </div>
-    </div>
 
-    <!-- Alt Tab Bar (Mobil için) -->
-    <div class="app-bottom-nav">
-        <a href="dashboard.html" class="app-bottom-nav-item active">
-            <span class="app-bottom-nav-icon">🏠</span>
-            <span>Ana Sayfa</span>
-        </a>
-        <a href="wardrobe.html" class="app-bottom-nav-item">
-            <span class="app-bottom-nav-icon">👕</span>
-            <span>Gardırop</span>
-        </a>
-        <a href="outfits.html" class="app-bottom-nav-item">
-            <span class="app-bottom-nav-icon">✨</span>
-            <span>Kombin</span>
-        </a>
-        <a href="social.html" class="app-bottom-nav-item">
-            <span class="app-bottom-nav-icon">🔥</span>
-            <span>Sosyal</span>
-        </a>
-        <a href="profile.html" class="app-bottom-nav-item">
-            <span class="app-bottom-nav-icon">👤</span>
-            <span>Profil</span>
-        </a>
-    </div>
+        <!-- ─── Bottom Grid ─── -->
+        <div class="bottom-grid">
 
-    <!-- Modüler JS Dosyaları -->
+            <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+                <!-- Wardrobe card -->
+                <div class="card wardrobe-card" id="wardrobe-section">
+                    <div class="card-header">
+                        <h3>👕 Gardırobum</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="stat-container">
+                            <span class="stat-number" id="wardrobe-count">0</span>
+                            <span class="stat-label">Kıyafet</span>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <button class="btn btn-secondary btn-block" onclick="window.location.href='wardrobe.html'">Gardıroba Git →</button>
+                    </div>
+                </div>
+
+                <!-- AI Outfit Rater card -->
+                <div class="card" id="ai-rater-section">
+                    <div class="card-header">
+                        <h3>🌟 AI Kombin Puanlayıcı</h3>
+                    </div>
+                    <div class="card-body" id="ai-rater-body">
+                        <!-- File upload zone -->
+                        <div id="ai-rater-upload-zone" style="border: 2px dashed var(--border-color); border-radius: var(--radius-sm); padding: 1.5rem; text-align: center; cursor: pointer; transition: all 0.2s; background: rgba(117,170,219,0.02); display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 150px;">
+                            <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">📸</div>
+                            <p style="font-weight: 600; font-size: 0.95rem; margin-bottom: 0.25rem; color: var(--text);">Bir Kombin Fotoğrafı Seç</p>
+                            <p style="font-size: 0.8rem; color: var(--muted);">Sürükleyip bırakabilir veya tıklayabilirsin</p>
+                            <input type="file" id="ai-rater-file-input" accept="image/*" style="display: none;">
+                        </div>
+                        
+                        <!-- Image preview area -->
+                        <div id="ai-rater-preview-container" style="display: none; margin-top: 1rem; text-align: center; position: relative;">
+                            <img id="ai-rater-preview-img" style="max-width: 100%; max-height: 220px; border-radius: var(--radius-sm); object-fit: contain; box-shadow: var(--shadow-sm); display: block; margin: 0 auto;">
+                            <button id="ai-rater-remove-btn" style="position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.6); color: white; border: none; border-radius: 50%; width: 28px; height: 28px; font-size: 1.2rem; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,0,0,0.8)'" onmouseout="this.style.background='rgba(0,0,0,0.6)'">&times;</button>
+                            <button id="ai-rater-submit-btn" class="btn btn-primary btn-block" style="margin-top: 1.25rem; width: 100%;">✨ Kombini Puanla</button>
+                        </div>
+                        
+                        <!-- Loading state -->
+                        <div id="ai-rater-loading" style="display: none; text-align: center; padding: 2rem 0;">
+                            <div class="spinner" style="width: 32px; height: 32px; border: 3px solid rgba(117,170,219,0.2); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 1rem;"></div>
+                            <p id="ai-rater-loading-text" style="font-size: 0.9rem; font-weight: 500; color: var(--muted);">Yapay Zeka kombini inceliyor...</p>
+                        </div>
+
+                        <!-- Result display area -->
+                        <div id="ai-rater-result" style="display: none;">
+                            <!-- Score Circular Badge -->
+                            <div style="display: flex; align-items: center; justify-content: center; flex-direction: column; padding: 1.25rem; background: linear-gradient(135deg, rgba(117,170,219,0.08) 0%, rgba(165,211,184,0.08) 100%); border-radius: var(--radius-sm); margin-bottom: 1.25rem; border: 1px solid var(--border-color);">
+                                <span style="font-size: 0.78rem; text-transform: uppercase; font-weight: 700; letter-spacing: 0.8px; color: var(--muted); margin-bottom: 0.25rem;">KOMBİN PUANI</span>
+                                <div style="font-size: 3.2rem; font-weight: 800; font-family: var(--font-head); color: var(--accent); line-height: 1; display: flex; align-items: baseline; gap: 2px;">
+                                    <span id="ai-rater-score">8.5</span>
+                                    <span style="font-size: 1.2rem; font-weight: 500; color: var(--muted);">/10</span>
+                                </div>
+                            </div>
+
+                            <!-- Detailed Feedback -->
+                            <div style="display: flex; flex-direction: column; gap: 0.85rem; font-size: 0.9rem; text-align: left;">
+                                <div>
+                                    <h4 style="font-weight: 600; color: var(--success-color); display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.35rem; font-size: 0.95rem;">
+                                        <span>👍</span> İyi Yanları
+                                    </h4>
+                                    <ul id="ai-rater-pros" style="padding-left: 1.2rem; color: var(--muted); line-height: 1.45;">
+                                        <!-- Pros list -->
+                                    </ul>
+                                </div>
+                                <div style="border-top: 1px solid var(--border-color); padding-top: 0.85rem;">
+                                    <h4 style="font-weight: 600; color: #f43f5e; display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.35rem; font-size: 0.95rem;">
+                                        <span>👎</span> Geliştirilebilir Yanları
+                                    </h4>
+                                    <ul id="ai-rater-cons" style="padding-left: 1.2rem; color: var(--muted); line-height: 1.45;">
+                                        <!-- Cons list -->
+                                    </ul>
+                                </div>
+                                <div style="border-top: 1px solid var(--border-color); padding-top: 0.85rem;">
+                                    <h4 style="font-weight: 600; color: var(--primary-color); display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.35rem; font-size: 0.95rem;">
+                                        <span>💡</span> Nasıl Geliştirilir?
+                                    </h4>
+                                    <ul id="ai-rater-suggestions" style="padding-left: 1.2rem; color: var(--muted); line-height: 1.45;">
+                                        <!-- Suggestions list -->
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <!-- Actions: Reset / Add to Wardrobe / Share to Social -->
+                            <div style="display: flex; flex-direction: column; gap: 0.6rem; margin-top: 1.5rem;">
+                                <div style="display: flex; gap: 0.5rem;">
+                                    <button id="ai-rater-share-btn" class="btn btn-secondary" style="flex: 1; font-size: 0.82rem; padding: 0.5rem; display: flex; align-items: center; justify-content: center; gap: 4px;">
+                                        📤 Akışta Paylaş
+                                    </button>
+                                    <button id="ai-rater-add-btn" class="btn btn-secondary" style="flex: 1; font-size: 0.82rem; padding: 0.5rem; display: flex; align-items: center; justify-content: center; gap: 4px;">
+                                        Dolaba Ekle
+                                    </button>
+                                </div>
+                                <button id="ai-rater-reset-btn" class="btn btn-primary btn-block" style="font-size: 0.9rem; padding: 0.55rem; width: 100%;">
+                                    🔄 Yeni Kombin Puanla
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Social feed card -->
+            <div class="card" id="social-feed-section">
+                <div class="card-header">
+                    <h3>🔥 Sosyal Akış</h3>
+                    <a href="social.html" class="link-more">Tümünü Gör →</a>
+                </div>
+                <div class="feed-grid" id="social-feed-container">
+                    <!-- JS ile doldurulacak -->
+                </div>
+            </div>
+
+        </div>
+    </main>
+
     <script src="js/config.js" type="module"></script>
     <script src="js/utils.js" type="module"></script>
     <script src="js/api.js" type="module"></script>
     <script src="js/ui.js" type="module"></script>
     <script src="js/main.js" type="module"></script>
+    <script src="js/app-animations.js"></script>
 </body>
 </html>

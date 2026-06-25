@@ -5,37 +5,79 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kombin.AI | Tarzını Yapay Zeka ile Keşfet</title>
+    <link rel="icon" type="image/jpeg" href="logo.jpg">
     <link rel="stylesheet" href="css/style.css">
     <style>
+        /* ─── Hero Section ─── */
         .hero-section {
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             text-align: center;
-            min-height: 80vh;
-            padding: 2rem;
+            padding: 2.5rem 2rem 0;
         }
 
         .hero-badge {
-            background: rgba(117, 170, 219, 0.1);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: linear-gradient(135deg, rgba(91, 159, 217, 0.14), rgba(165, 211, 184, 0.12));
             color: var(--accent-primary);
-            padding: 0.5rem 1.2rem;
+            padding: 0.45rem 1.1rem;
             border-radius: 100px;
-            font-size: 0.9rem;
-            font-weight: 600;
-            margin-bottom: 1.5rem;
-            letter-spacing: 1px;
+            font-size: 0.76rem;
+            font-weight: 700;
+            margin-bottom: 1.2rem;
+            letter-spacing: 1.8px;
             text-transform: uppercase;
+            border: 1px solid rgba(91, 159, 217, 0.22);
+            backdrop-filter: blur(8px);
+            animation: badgePulse 3s ease-in-out infinite;
+        }
+
+        .hero-badge::before {
+            content: '';
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--accent-primary);
+            animation: dotPing 1.8s ease-in-out infinite;
+        }
+
+        @keyframes badgePulse {
+
+            0%,
+            100% {
+                box-shadow: 0 0 0 0 rgba(91, 159, 217, 0.2);
+            }
+
+            50% {
+                box-shadow: 0 0 0 6px rgba(91, 159, 217, 0);
+            }
+        }
+
+        @keyframes dotPing {
+
+            0%,
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+
+            50% {
+                opacity: 0.4;
+                transform: scale(0.6);
+            }
         }
 
         .hero-title {
             font-family: var(--font-heading);
-            font-size: 4.5rem;
+            font-size: 3.4rem;
             font-weight: 700;
             line-height: 1.1;
-            margin-bottom: 1.5rem;
-            max-width: 900px;
+            margin-bottom: 1rem;
+            max-width: 800px;
             background: linear-gradient(135deg, var(--text-main) 0%, var(--accent-primary) 100%);
             -webkit-background-clip: text;
             background-clip: text;
@@ -43,96 +85,679 @@
         }
 
         .hero-description {
-            font-size: 1.25rem;
+            font-size: 1.05rem;
             color: var(--text-muted);
-            max-width: 600px;
-            margin-bottom: 3rem;
+            max-width: 540px;
+            margin-bottom: 1.75rem;
         }
 
         .cta-group {
             display: flex;
-            gap: 1.5rem;
+            gap: 1rem;
+            margin-bottom: 0;
         }
 
-        .btn {
-            padding: 1rem 2.5rem;
-            border-radius: var(--radius-md);
-            font-family: var(--font-heading);
-            font-weight: 600;
-            font-size: 1.1rem;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            display: inline-block;
-        }
+        /* btn styles come from css/style.css */
 
-        .btn-primary {
-            background: var(--accent-primary);
-            color: white;
-            border: none;
-            box-shadow: 0 10px 20px -5px rgba(117, 170, 219, 0.4);
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 15px 30px -5px rgba(117, 170, 219, 0.5);
-        }
-
-        .btn-outline {
-            background: transparent;
-            color: var(--text-main);
-            border: 2px solid var(--border-color);
-        }
-
-        .btn-outline:hover {
-            background: rgba(226, 232, 240, 0.3);
-            border-color: var(--accent-primary);
-        }
-
+        /* --- App Preview Slideshow --- */
         .hero-visual {
-            margin-top: 4rem;
+            margin-top: 2rem;
             position: relative;
             width: 100%;
-            max-width: 1000px;
-            height: 400px;
-            background: var(--bg-surface-glass);
+            max-width: 980px;
             border-radius: var(--radius-lg);
-            border: 1px solid rgba(255, 255, 255, 0.5);
-            backdrop-filter: blur(10px);
+            overflow: hidden;
+            box-shadow: 0 24px 60px -12px rgba(45, 55, 72, 0.18), 0 0 0 1px rgba(117, 170, 219, 0.15);
+        }
+
+        /* Projector frame */
+        .preview-frame {
+            position: relative;
+            width: 100%;
+            background: #1a1f2e;
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+        }
+
+        /* Top browser bar */
+        .preview-browser-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 16px;
+            background: #12151f;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .browser-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .browser-dot.red {
+            background: #ff5f57;
+        }
+
+        .browser-dot.yellow {
+            background: #febc2e;
+        }
+
+        .browser-dot.green {
+            background: #28c840;
+        }
+
+        .browser-url {
+            flex: 1;
+            margin-left: 12px;
+            background: rgba(255, 255, 255, 0.06);
+            border-radius: 8px;
+            padding: 4px 12px;
+            font-size: 0.75rem;
+            color: rgba(255, 255, 255, 0.4);
+            font-family: var(--font-body);
+            max-width: 300px;
+        }
+
+        /* Slide container */
+        .slides-wrapper {
+            position: relative;
+            width: 100%;
+            height: 320px;
+            overflow: hidden;
+        }
+
+        .slide {
+            position: absolute;
+            inset: 0;
             display: flex;
             align-items: center;
             justify-content: center;
-            overflow: hidden;
-            box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.1);
+            padding: 2rem 2.5rem;
+            opacity: 0;
+            transform: translateX(60px) scale(0.97);
+            transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1), transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+            pointer-events: none;
         }
 
-        .visual-placeholder {
-            font-style: italic;
-            color: var(--text-muted);
-            font-size: 1.1rem;
+        .slide.active {
+            opacity: 1;
+            transform: translateX(0) scale(1);
+            pointer-events: auto;
+        }
+
+        .slide.exit {
+            opacity: 0;
+            transform: translateX(-60px) scale(0.97);
+        }
+
+        /* Slide layouts */
+        .slide-content {
+            display: flex;
+            align-items: center;
+            gap: 2.5rem;
+            width: 100%;
+            max-width: 860px;
+        }
+
+        .slide-text {
+            flex: 1;
+        }
+
+        .slide-step-label {
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: #75aadb;
+            margin-bottom: 0.5rem;
+        }
+
+        .slide-title {
+            font-family: var(--font-heading);
+            font-size: 1.7rem;
+            font-weight: 700;
+            color: #f0f4ff;
+            line-height: 1.2;
+            margin-bottom: 0.8rem;
+        }
+
+        .slide-desc {
+            font-size: 0.95rem;
+            color: rgba(240, 244, 255, 0.55);
+            line-height: 1.65;
+        }
+
+        /* Mock UI panels */
+        .slide-mock {
+            flex: 0 0 300px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.09);
+            border-radius: 16px;
+            overflow: hidden;
+            min-height: 220px;
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+        }
+
+        /* Wardrobe grid mock */
+        .mock-wardrobe-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 6px;
+            padding: 14px;
+        }
+
+        .mock-item {
+            aspect-ratio: 3/4;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-end;
+            padding: 6px;
+            font-size: 1.2rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .mock-item-label {
+            font-size: 0.6rem;
+            color: rgba(255, 255, 255, 0.6);
+            background: rgba(0, 0, 0, 0.35);
+            padding: 2px 5px;
+            border-radius: 4px;
+        }
+
+        @keyframes itemPop {
+            0% {
+                transform: scale(0.7);
+                opacity: 0;
+            }
+
+            80% {
+                transform: scale(1.05);
+            }
+
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .slide.active .mock-item:nth-child(1) {
+            animation: itemPop 0.4s 0.1s both;
+        }
+
+        .slide.active .mock-item:nth-child(2) {
+            animation: itemPop 0.4s 0.2s both;
+        }
+
+        .slide.active .mock-item:nth-child(3) {
+            animation: itemPop 0.4s 0.3s both;
+        }
+
+        .slide.active .mock-item:nth-child(4) {
+            animation: itemPop 0.4s 0.4s both;
+        }
+
+        .slide.active .mock-item:nth-child(5) {
+            animation: itemPop 0.4s 0.5s both;
+        }
+
+        .slide.active .mock-item:nth-child(6) {
+            animation: itemPop 0.4s 0.6s both;
+        }
+
+        /* AI Thinking mock */
+        .mock-ai-panel {
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .mock-ai-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: #75aadb;
+        }
+
+        .ai-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #75aadb;
+            animation: aiPulse 1.2s infinite;
+        }
+
+        @keyframes aiPulse {
+
+            0%,
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+
+            50% {
+                opacity: 0.4;
+                transform: scale(0.7);
+            }
+        }
+
+        .mock-ai-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .mock-tag {
+            padding: 4px 10px;
+            border-radius: 100px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+
+        .mock-tag.weather {
+            background: rgba(117, 170, 219, 0.2);
+            color: #93c6e7;
+        }
+
+        .mock-tag.occasion {
+            background: rgba(165, 211, 184, 0.2);
+            color: #a5d3b8;
+        }
+
+        .mock-tag.style {
+            background: rgba(254, 188, 46, 0.15);
+            color: #febc2e;
+        }
+
+        .mock-ai-bar {
+            height: 6px;
+            border-radius: 100px;
+            background: rgba(255, 255, 255, 0.06);
+            overflow: hidden;
+        }
+
+        .mock-ai-bar-fill {
+            height: 100%;
+            border-radius: 100px;
+            background: linear-gradient(90deg, #75aadb, #a5d3b8);
+        }
+
+        @keyframes barGrow {
+            from {
+                width: 0;
+            }
+
+            to {
+                width: var(--w);
+            }
+        }
+
+        .slide.active .mock-ai-bar-fill {
+            animation: barGrow 1s 0.5s both;
+        }
+
+        /* Outfit card mock */
+        .mock-outfit-card {
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .mock-outfit-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 0.78rem;
+            color: rgba(240, 244, 255, 0.6);
+        }
+
+        .mock-outfit-rating {
+            display: flex;
+            gap: 2px;
+        }
+
+        .star {
+            color: #febc2e;
+            font-size: 0.9rem;
+        }
+
+        .mock-outfit-pieces {
+            display: flex;
+            gap: 8px;
+        }
+
+        .mock-piece {
+            flex: 1;
+            aspect-ratio: 2/3;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        @keyframes pieceSlide {
+            from {
+                opacity: 0;
+                transform: translateY(15px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .slide.active .mock-piece:nth-child(1) {
+            animation: pieceSlide 0.5s 0.2s both;
+        }
+
+        .slide.active .mock-piece:nth-child(2) {
+            animation: pieceSlide 0.5s 0.35s both;
+        }
+
+        .slide.active .mock-piece:nth-child(3) {
+            animation: pieceSlide 0.5s 0.5s both;
+        }
+
+        .mock-outfit-score {
+            padding: 8px 12px;
+            background: rgba(117, 170, 219, 0.1);
+            border-radius: 10px;
+            font-size: 0.75rem;
+            color: #93c6e7;
+            text-align: center;
+        }
+
+        /* Social feed mock */
+        .mock-social-feed {
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .mock-post {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+            opacity: 0;
+        }
+
+        @keyframes postAppear {
+            from {
+                opacity: 0;
+                transform: translateX(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .slide.active .mock-post:nth-child(1) {
+            animation: postAppear 0.5s 0.1s both;
+        }
+
+        .slide.active .mock-post:nth-child(2) {
+            animation: postAppear 0.5s 0.3s both;
+        }
+
+        .slide.active .mock-post:nth-child(3) {
+            animation: postAppear 0.5s 0.5s both;
+        }
+
+        .mock-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+            flex-shrink: 0;
+        }
+
+        .mock-post-body {
+            flex: 1;
+        }
+
+        .mock-post-name {
+            font-size: 0.73rem;
+            font-weight: 600;
+            color: rgba(240, 244, 255, 0.8);
+            margin-bottom: 4px;
+        }
+
+        .mock-post-img {
+            width: 100%;
+            height: 48px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            letter-spacing: 4px;
+        }
+
+        /* Progress dots */
+        .preview-dots {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            padding: 14px 0 16px;
+            background: #12151f;
+        }
+
+        .preview-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .preview-dot.active {
+            background: #75aadb;
+            width: 24px;
+            border-radius: 100px;
+        }
+
+        /* Progress bar */
+        .preview-progress {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 2px;
+            background: linear-gradient(90deg, #75aadb, #a5d3b8);
+            border-radius: 0 100px 100px 0;
+            transition: none;
+        }
+
+        @keyframes progressGrow {
+            from {
+                width: 0%;
+            }
+
+            to {
+                width: 100%;
+            }
+        }
+
+        /* Nav Buttons (Prev/Next) */
+        .preview-nav-btn {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(18, 21, 31, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            color: rgba(255, 255, 255, 0.85);
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 15;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            opacity: 0;
+        }
+
+        .preview-nav-btn.prev {
+            left: 16px;
+        }
+
+        .preview-nav-btn.next {
+            right: 16px;
+        }
+
+        .preview-nav-btn:hover {
+            background: #75aadb;
+            color: white;
+            border-color: #75aadb;
+            box-shadow: 0 4px 12px rgba(117, 170, 219, 0.4);
+            transform: translateY(-50%) scale(1.08);
+        }
+
+        /* Show nav buttons on hover */
+        .hero-visual:hover .preview-nav-btn {
+            opacity: 1;
         }
 
         @media (max-width: 768px) {
             .hero-title {
-                font-size: 3rem;
+                font-size: 2.2rem;
             }
 
             .cta-group {
                 flex-direction: column;
                 width: 100%;
-                max-width: 300px;
+                max-width: 280px;
             }
+
+            .slide-content {
+                flex-direction: column;
+                gap: 1.25rem;
+            }
+
+            .slide-mock {
+                flex: 0 0 auto;
+                width: 100%;
+            }
+
+            .slides-wrapper {
+                height: 520px;
+            }
+
+            nav {
+                padding: 1rem 0 !important;
+            }
+
+            nav a[href="login.html"] {
+                margin-right: 0.8rem !important;
+                font-size: 0.9rem;
+            }
+
+            nav .btn-primary {
+                padding: 0.5rem 1rem !important;
+                font-size: 0.85rem !important;
+            }
+
+            nav span {
+                font-size: 1.2rem !important;
+            }
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px -15px rgba(117, 170, 219, 0.2);
+            border-color: rgba(117, 170, 219, 0.4) !important;
+        }
+
+        /* ─── Hero Wrapper Position ─── */
+        .hero-section {
+            position: relative;
+        }
+
+        .hero-section>* {
+            position: relative;
+            z-index: 1;
+        }
+
+        /* ─── Hero Title Gradient ─── */
+        .hero-title {
+            background: linear-gradient(135deg,
+                    var(--text-main) 0%,
+                    var(--accent-primary) 55%,
+                    var(--accent-tertiary) 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 2px 24px rgba(91, 159, 217, 0.15));
+        }
+
+        /* ─── CTA Group ─── */
+        .cta-group {
+            position: relative;
+            z-index: 2;
+        }
+
+        .cta-group .btn-primary {
+            padding: 0.82rem 2.2rem;
+        }
+
+        .cta-group .btn-outline {
+            padding: 0.82rem 2.2rem;
+        }
+
+        /* ─── Hero Visual ─── */
+        .hero-visual {
+            position: relative;
+            z-index: 1;
+        }
+
+        /* ─── Feature Section Hero Badge ─── */
+        .features-section .hero-badge {
+            animation: none;
+        }
+
+        .features-section .hero-badge::before {
+            animation: none;
         }
     </style>
 </head>
 
 <body>
     <div class="container fade-in">
-        <nav style="display: flex; justify-content: space-between; align-items: center; padding: 1.5rem 0;">
-            <div
-                style="font-family: var(--font-heading); font-size: 1.5rem; font-weight: 700; color: var(--accent-primary);">
-                Kombin.AI</div>
-            <div>
+        <nav id="mainNav"
+            style="display: flex; justify-content: space-between; align-items: center; padding: 1.5rem 0; position: sticky; top: 0; z-index: 50; transition: all 0.35s ease;">
+            <a href="index.html"
+                style="display: flex; align-items: center; gap: 8px; font-family: var(--font-heading); font-size: 1.5rem; font-weight: 700; color: var(--accent-primary); text-decoration: none;">
+                <img src="logo.jpg" alt="Logo"
+                    style="width: 32px; height: 32px; object-fit: cover; border-radius: 8px;">
+                <span>Kombin.AI</span>
+            </a>
+            <div id="navAuthLinks">
                 <a href="login.html"
                     style="text-decoration: none; color: var(--text-main); font-weight: 600; margin-right: 2rem;">Giriş
                     Yap</a>
@@ -141,23 +766,419 @@
             </div>
         </nav>
 
-        <section class="hero-section">
+        <section class="hero-section" style="position: relative; overflow: hidden;">
+            <!-- Floating particles -->
+            <div id="heroParticles" aria-hidden="true"></div>
+
             <div class="hero-badge">Yapay Zeka Destekli Stil Danışmanı</div>
             <h1 class="hero-title">Her Günün İçin Mükemmel Kombini Saniyeler İçinde Tasarla.</h1>
             <p class="hero-description">Gardırobunu dijitalleştir, tarzını yapay zekaya emanet et. Hava durumuna,
                 gideceğin yere ve bütçene en uygun kombinleri senin için hazırlayalım.</p>
 
             <div class="cta-group">
-                <a href="login.html?tab=register" class="btn btn-primary">Hemen Ücretsiz Başla</a>
-                <a href="#features" class="btn btn-outline">Nasıl Çalışır?</a>
+                <a href="login.html?tab=register" class="btn btn-primary" id="ctaPrimary">✨ Hemen Ücretsiz Başla</a>
+                <a href="#features" class="btn btn-outline" id="ctaSecondary" data-no-transition>Nasıl Çalışır?</a>
             </div>
 
-            <div class="hero-visual">
-                <div class="visual-placeholder">Uygulama Önizlemesi Yakında...</div>
-                <!-- Gelecekte buraya bir animasyon veya görsel eklenebilir -->
+            <!-- ===== APP PREVIEW SLIDESHOW ===== -->
+            <div class="hero-visual" id="appPreview">
+                <div class="preview-frame">
+                    <!-- Browser chrome -->
+                    <div class="preview-browser-bar">
+                        <span class="browser-dot red"></span>
+                        <span class="browser-dot yellow"></span>
+                        <span class="browser-dot green"></span>
+                        <span class="browser-url">kombinai.vercel.app</span>
+                    </div>
+
+                    <!-- Slides -->
+                    <div class="slides-wrapper" id="slidesWrapper">
+
+                        <!-- SLIDE 1: Gardırop -->
+                        <div class="slide active" id="slide-0">
+                            <div class="slide-content">
+                                <div class="slide-text">
+                                    <div class="slide-step-label">Adım 1</div>
+                                    <div class="slide-title">Dijital Gardırobunu Oluştur</div>
+                                    <div class="slide-desc">Kıyafetlerini tek tek yükle ve yapay zeka onları otomatik
+                                        olarak kategorilere ayırsın. T-shirt, ceket, pantolon — her şey yerli yerinde.
+                                    </div>
+                                </div>
+                                <div class="slide-mock">
+                                    <div class="mock-wardrobe-grid">
+                                        <div class="mock-item"
+                                            style="background:linear-gradient(135deg,#2a3a5c,#1e2d4a);">
+                                            <span>👕</span><span class="mock-item-label">Tişört</span>
+                                        </div>
+                                        <div class="mock-item"
+                                            style="background:linear-gradient(135deg,#3a2a2a,#2d1e1e);">
+                                            <span>🧥</span><span class="mock-item-label">Ceket</span>
+                                        </div>
+                                        <div class="mock-item"
+                                            style="background:linear-gradient(135deg,#2a3a2a,#1e2d1e);">
+                                            <span>👖</span><span class="mock-item-label">Pantolon</span>
+                                        </div>
+                                        <div class="mock-item"
+                                            style="background:linear-gradient(135deg,#3a2a3a,#2d1e2d);">
+                                            <span>👗</span><span class="mock-item-label">Elbise</span>
+                                        </div>
+                                        <div class="mock-item"
+                                            style="background:linear-gradient(135deg,#2a2a3a,#1e1e2d);">
+                                            <span>👟</span><span class="mock-item-label">Ayakkabı</span>
+                                        </div>
+                                        <div class="mock-item"
+                                            style="background:linear-gradient(135deg,#3a3a2a,#2d2d1e);">
+                                            <span>🎒</span><span class="mock-item-label">Çanta</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- SLIDE 2: AI Öneri -->
+                        <div class="slide" id="slide-1">
+                            <div class="slide-content">
+                                <div class="slide-text">
+                                    <div class="slide-step-label">Adım 2</div>
+                                    <div class="slide-title">Yapay Zeka Tarzını Analiz Ediyor</div>
+                                    <div class="slide-desc">Hava durumunu, günün programını ve stil tercihlerini analiz
+                                        eden AI, sana en uygun kombinleri saniyeler içinde önerir.</div>
+                                </div>
+                                <div class="slide-mock">
+                                    <div class="mock-ai-panel">
+                                        <div class="mock-ai-header">
+                                            <div class="ai-dot"></div>
+                                            AI Analiz Yapıyor...
+                                        </div>
+                                        <div class="mock-ai-row">
+                                            <span class="mock-tag weather">☀️ 24°C Güneşli</span>
+                                            <span class="mock-tag occasion">🏢 İş Toplantısı</span>
+                                        </div>
+                                        <div class="mock-ai-row">
+                                            <span class="mock-tag style">✨ Modern Minimal</span>
+                                        </div>
+                                        <div style="font-size:0.72rem;color:rgba(240,244,255,0.4);margin-top:4px;">Uyum
+                                            Skoru</div>
+                                        <div class="mock-ai-bar">
+                                            <div class="mock-ai-bar-fill" style="--w:88%;width:0"></div>
+                                        </div>
+                                        <div style="font-size:0.72rem;color:rgba(240,244,255,0.4);">Renk Paleti</div>
+                                        <div class="mock-ai-bar">
+                                            <div class="mock-ai-bar-fill" style="--w:72%;width:0"></div>
+                                        </div>
+                                        <div style="font-size:0.72rem;color:rgba(240,244,255,0.4);">Mevsim Uyumu</div>
+                                        <div class="mock-ai-bar">
+                                            <div class="mock-ai-bar-fill" style="--w:95%;width:0"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- SLIDE 3: Kombin Önerisi -->
+                        <div class="slide" id="slide-2">
+                            <div class="slide-content">
+                                <div class="slide-text">
+                                    <div class="slide-step-label">Adım 3</div>
+                                    <div class="slide-title">Hazır Kombinini Giy, Güne Başla</div>
+                                    <div class="slide-desc">AI'nın hazırladığı kombinleri incele, beğen ve tek tıkla
+                                        kombinini sabah rutininden çıkar. Her gün farklı, her gün şık.</div>
+                                </div>
+                                <div class="slide-mock">
+                                    <div class="mock-outfit-card">
+                                        <div class="mock-outfit-header">
+                                            <span>Bugünün Kombini</span>
+                                            <div class="mock-outfit-rating">
+                                                <span class="star">★</span><span class="star">★</span><span
+                                                    class="star">★</span><span class="star">★</span><span class="star"
+                                                    style="opacity:0.3">★</span>
+                                            </div>
+                                        </div>
+                                        <div class="mock-outfit-pieces">
+                                            <div class="mock-piece"
+                                                style="background:linear-gradient(135deg,#1e2a3a,#0f172a)">👔</div>
+                                            <div class="mock-piece"
+                                                style="background:linear-gradient(135deg,#1e1e2a,#0f0f1a)">🧣</div>
+                                            <div class="mock-piece"
+                                                style="background:linear-gradient(135deg,#2a1e1e,#1a0f0f)">👞</div>
+                                        </div>
+                                        <div class="mock-outfit-score">✨ Uyum Skoru: 94/100 — Mükemmel!</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- SLIDE 4: Sosyal Akış -->
+                        <div class="slide" id="slide-3">
+                            <div class="slide-content">
+                                <div class="slide-text">
+                                    <div class="slide-step-label">Keşfet</div>
+                                    <div class="slide-title">Topluluğun Stilinden İlham Al</div>
+                                    <div class="slide-desc">Diğer kullanıcıların kombinlerini gör, beğen ve kendi
+                                        gardırobuna uyarla. Moda ilhamı her zaman bir tık uzağında.</div>
+                                </div>
+                                <div class="slide-mock">
+                                    <div class="mock-social-feed">
+                                        <div class="mock-post">
+                                            <div class="mock-avatar"
+                                                style="background:linear-gradient(135deg,#75aadb,#5580b0)">👩</div>
+                                            <div class="mock-post-body">
+                                                <div class="mock-post-name">Ayşe K. · Ofis Şıklığı</div>
+                                                <div class="mock-post-img"
+                                                    style="background:linear-gradient(135deg,#1e2a3a,#0f172a)">👔 🧣 👞
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="mock-post">
+                                            <div class="mock-avatar"
+                                                style="background:linear-gradient(135deg,#a5d3b8,#7baa8e)">🧑</div>
+                                            <div class="mock-post-body">
+                                                <div class="mock-post-name">Mehmet A. · Sokak Stili</div>
+                                                <div class="mock-post-img"
+                                                    style="background:linear-gradient(135deg,#2a1e3a,#1a0f2a)">🧢 👕 👟
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="mock-post">
+                                            <div class="mock-avatar"
+                                                style="background:linear-gradient(135deg,#febc2e,#c8940f)">👩</div>
+                                            <div class="mock-post-body">
+                                                <div class="mock-post-name">Zeynep T. · Yaz Kombini</div>
+                                                <div class="mock-post-img"
+                                                    style="background:linear-gradient(135deg,#3a2a1e,#2a1a0f)">👗 👜 🩴
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Progress bar -->
+                        <div class="preview-progress" id="previewProgress"></div>
+                    </div>
+
+                    <!-- Dot navigation -->
+                    <div class="preview-dots" id="previewDots">
+                        <div class="preview-dot active" data-idx="0"></div>
+                        <div class="preview-dot" data-idx="1"></div>
+                        <div class="preview-dot" data-idx="2"></div>
+                        <div class="preview-dot" data-idx="3"></div>
+                    </div>
+
+                    <!-- Navigation arrows -->
+                    <button class="preview-nav-btn prev" id="prevSlideBtn" title="Önceki">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="15 18 9 12 15 6" />
+                        </svg>
+                    </button>
+                    <button class="preview-nav-btn next" id="nextSlideBtn" title="Sonraki">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="9 18 15 12 9 6" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== DETAILED FEATURES SECTION ===== -->
+        <section id="features" class="features-section fade-in"
+            style="margin-top: 5rem; padding: 4rem 0; border-top: 1px solid var(--border-color);">
+            <div style="text-align: center; margin-bottom: 3.5rem;">
+                <span class="hero-badge">Detaylı Keşfet</span>
+                <h2
+                    style="font-family: var(--font-heading); font-size: 2.6rem; font-weight: 700; color: var(--text-main); margin-top: 0.5rem; letter-spacing: -0.5px;">
+                    Kombin.AI Nasıl Çalışır?</h2>
+                <p style="color: var(--text-muted); font-size: 1.1rem; max-width: 600px; margin: 0.8rem auto 0;">Sadece
+                    bir kombin öneri sistemi değil, dijital gardırobunuzdan topluluk akışına kadar uçtan uca akıllı bir
+                    moda asistanı.</p>
+            </div>
+
+            <div class="features-grid"
+                style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 2rem;"
+                id="featuresGrid">
+                <!-- Step 1 -->
+                <div class="glass-panel feature-card"
+                    style="padding: 2.5rem 2rem; border-radius: var(--radius-lg); transition: all 0.3s ease;">
+                    <div style="font-size: 2.5rem; margin-bottom: 1.2rem;">👕</div>
+                    <h3
+                        style="font-family: var(--font-heading); font-size: 1.35rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.8rem;">
+                        1. Dijital Gardırop</h3>
+                    <p
+                        style="color: var(--text-muted); font-size: 0.95rem; line-height: 1.6; font-family: var(--font-body);">
+                        Kıyafetlerinizin fotoğraflarını çekerek saniyeler içinde yükleyin. Arka plan temizleme
+                        algoritması ve AI etiketleme sayesinde kategorilendirme tamamen otomatik yapılır.</p>
+                </div>
+
+                <!-- Step 2 -->
+                <div class="glass-panel feature-card"
+                    style="padding: 2.5rem 2rem; border-radius: var(--radius-lg); transition: all 0.3s ease;">
+                    <div style="font-size: 2.5rem; margin-bottom: 1.2rem;">🧠</div>
+                    <h3
+                        style="font-family: var(--font-heading); font-size: 1.35rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.8rem;">
+                        2. Kişisel AI Analizi</h3>
+                    <p
+                        style="color: var(--text-muted); font-size: 0.95rem; line-height: 1.6; font-family: var(--font-body);">
+                        Cinsiyetiniz, yaşınız, boy/kilonuz, vücut tipiniz, ten renginiz ve saç renginiz analiz edilerek
+                        size en uygun kesimler ve renk paletleri algoritma tarafından çıkarılır.</p>
+                </div>
+
+                <!-- Step 3 -->
+                <div class="glass-panel feature-card"
+                    style="padding: 2.5rem 2rem; border-radius: var(--radius-lg); transition: all 0.3s ease;">
+                    <div style="font-size: 2.5rem; margin-bottom: 1.2rem;">🌤️</div>
+                    <h3
+                        style="font-family: var(--font-heading); font-size: 1.35rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.8rem;">
+                        3. Hava Durumu & Plan</h3>
+                    <p
+                        style="color: var(--text-muted); font-size: 0.95rem; line-height: 1.6; font-family: var(--font-body);">
+                        Hava durumunun anlık sıcaklık ve rüzgar bilgilerine göre, gideceğiniz yerin konseptine
+                        (toplantı, spor, şık davet) en uyumlu parçalar gardırobunuzdan seçilir.</p>
+                </div>
+
+                <!-- Step 4 -->
+                <div class="glass-panel feature-card"
+                    style="padding: 2.5rem 2rem; border-radius: var(--radius-lg); transition: all 0.3s ease;">
+                    <div style="font-size: 2.5rem; margin-bottom: 1.2rem;">🛒</div>
+                    <h3
+                        style="font-family: var(--font-heading); font-size: 1.35rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.8rem;">
+                        4. Sosyal Akış & Alışveriş</h3>
+                    <p
+                        style="color: var(--text-muted); font-size: 0.95rem; line-height: 1.6; font-family: var(--font-body);">
+                        Kombinlerinizi toplulukla paylaşarak stil ilhamı verin ve alın. Gardırobunuzda eksik olan
+                        parçaları bütçenize göre en ucuz fiyattan AI yardımıyla keşfedip satın alın.</p>
+                </div>
             </div>
         </section>
     </div>
+
+    <script>
+        (function () {
+            const SLIDE_DURATION = 4000;
+            const slides = document.querySelectorAll('.slide');
+            const dots = document.querySelectorAll('.preview-dot');
+            const progressBar = document.getElementById('previewProgress');
+            const prevBtn = document.getElementById('prevSlideBtn');
+            const nextBtn = document.getElementById('nextSlideBtn');
+            let current = 0;
+            let timer = null;
+
+            function goTo(idx) {
+                slides[current].classList.remove('active');
+                slides[current].classList.add('exit');
+                setTimeout(() => slides[current].classList.remove('exit'), 700);
+
+                dots[current].classList.remove('active');
+
+                current = idx;
+
+                slides[current].classList.add('active');
+                dots[current].classList.add('active');
+
+                startProgress();
+            }
+
+            function next() {
+                goTo((current + 1) % slides.length);
+            }
+
+            function prev() {
+                goTo((current - 1 + slides.length) % slides.length);
+            }
+
+            function startProgress() {
+                progressBar.style.animation = 'none';
+                progressBar.offsetHeight; // trigger reflow
+                progressBar.style.width = '0%';
+                progressBar.style.animation = `progressGrow ${SLIDE_DURATION}ms linear forwards`;
+            }
+
+            function startTimer() {
+                clearInterval(timer);
+                timer = setInterval(next, SLIDE_DURATION);
+            }
+
+            dots.forEach(dot => {
+                dot.addEventListener('click', () => {
+                    const idx = parseInt(dot.dataset.idx);
+                    if (idx !== current) {
+                        clearInterval(timer);
+                        goTo(idx);
+                        startTimer();
+                    }
+                });
+            });
+
+            if (prevBtn) {
+                prevBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    clearInterval(timer);
+                    prev();
+                    startTimer();
+                });
+            }
+
+            if (nextBtn) {
+                nextBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    clearInterval(timer);
+                    next();
+                    startTimer();
+                });
+            }
+
+            // Pause on hover
+            const wrapper = document.getElementById('appPreview');
+            if (wrapper) {
+                wrapper.addEventListener('mouseenter', () => {
+                    clearInterval(timer);
+                    progressBar.style.animationPlayState = 'paused';
+                });
+                wrapper.addEventListener('mouseleave', () => {
+                    startTimer();
+                    progressBar.style.animationPlayState = 'running';
+                });
+            }
+
+            startProgress();
+            startTimer();
+        })();
+    </script>
+
+    <!-- Page Transitions & Animations -->
+    <script type="module">
+        import { initPageTransitions } from './js/page-transitions.js';
+        import { initAllAnimations } from './js/animations.js';
+
+        // Init page transitions
+        initPageTransitions();
+
+        // Init animations after DOM ready
+        document.addEventListener('DOMContentLoaded', () => {
+            initAllAnimations();
+
+            // Nav scroll effect
+            const nav = document.getElementById('mainNav');
+            if (nav) {
+                window.addEventListener('scroll', () => {
+                    if (window.scrollY > 40) {
+                        nav.style.background = 'rgba(242, 246, 249, 0.94)';
+                        nav.style.backdropFilter = 'blur(24px) saturate(200%)';
+                        nav.style.boxShadow = '0 4px 24px -4px rgba(26, 35, 50, 0.08)';
+                        nav.style.borderRadius = '20px';
+                    } else {
+                        nav.style.background = '';
+                        nav.style.backdropFilter = '';
+                        nav.style.boxShadow = '';
+                        nav.style.borderRadius = '';
+                    }
+                }, { passive: true });
+            }
+        });
+    </script>
+
     <script type="module" src="js/main.js"></script>
 </body>
 

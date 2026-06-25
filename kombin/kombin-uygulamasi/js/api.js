@@ -569,17 +569,18 @@ export const api = {
             }
         }
 
-        const { error } = await supabase
-            .from('social_feed')
-            .delete()
-            .eq('id', postId)
-            .eq('user_id', userData.user.id);
+        let query = supabase.from('social_feed').delete().eq('id', postId);
+        if (userData.user.email !== 'fatihsahinbm@gmail.com') {
+            query = query.eq('user_id', userData.user.id);
+        }
+
+        const { error } = await query;
 
         if (error) throw error;
         return true;
     },
 
-    async getSocialFeed() {
+    async getSocialFeed(offset = 0, limit = 24) {
         if (!supabase) {
             await utils.delay(1000);
             return [
@@ -589,6 +590,47 @@ export const api = {
             ];
         }
 
+        try {
+            const { data: userData } = await supabase.auth.getUser();
+            const userId = userData?.user?.id || null;
+
+            if (userId) {
+                const { data, error } = await supabase
+                    .rpc('get_explore_feed', { 
+                        p_user_id: userId, 
+                        p_limit: limit, 
+                        p_offset: offset 
+                    });
+
+                if (error) {
+                    console.error("Akıllı keşfet algoritması çağrılamadı, fallback kullanılıyor:", error);
+                } else if (data) {
+                    // Görülen gönderileri arka planda işaretleyelim
+                    if (data.length > 0) {
+                        const seenRecords = data.map(post => ({
+                            user_id: userId,
+                            post_id: post.id
+                        }));
+                        supabase.from('user_seen_posts').insert(seenRecords).then(({ error: seenErr }) => {
+                            if (seenErr) console.warn("Görüldü kaydı eklenemedi:", seenErr);
+                        });
+                    }
+
+                    // UI'daki nested 'users' yapısıyla uyumluluk için normalize edelim
+                    return data.map(post => ({
+                        ...post,
+                        users: {
+                            name: post.user_name || 'Kullanıcı',
+                            avatar_url: post.user_avatar || null
+                        }
+                    }));
+                }
+            }
+        } catch (err) {
+            console.error("Keşfet algoritması başlatılamadı, fallback kullanılıyor:", err);
+        }
+
+        // Oturum açılmamışsa veya RPC hata verirse eski sıralama ile getir
         const { data, error } = await supabase
             .from('social_feed')
             .select(`
@@ -597,16 +639,25 @@ export const api = {
                 likes_count:post_likes(count),
                 comments_count:post_comments(count)
             `)
-            .order('created_at', { ascending: false });
+            .order('created_at', { ascending: false })
+            .range(offset, offset + limit - 1);
 
         if (error) throw error;
 
-        // Supabase count() aggregate'i array döndürür, düzeltelim
         return data.map(post => ({
             ...post,
             likes_count: post.likes_count?.[0]?.count ?? 0,
             comments_count: post.comments_count?.[0]?.count ?? 0
         }));
+    },
+
+    async clearSeenHistory() {
+        if (!supabase) return;
+        const { data: userData } = await supabase.auth.getUser();
+        if (!userData?.user) return;
+
+        const { error } = await supabase.rpc('clear_user_seen', { p_user_id: userData.user.id });
+        if (error) console.error("Görüldü geçmişi temizlenirken hata:", error);
     },
 
     async likePost(postId) {
@@ -720,6 +771,7 @@ export const api = {
             .from('social_feed')
             .select(`
                 id, user_id, image, tag, created_at,
+                users(name, avatar_url),
                 likes_count:post_likes(count),
                 comments_count:post_comments(count)
             `)
@@ -805,11 +857,15 @@ export const api = {
             .from('user_follows')
             .select(`
                 follower_id,
-                users!user_follows_follower_id_fkey (id, name)
+                users!user_follows_follower_id_fkey (id, name, avatar_url)
             `)
             .eq('following_id', userId);
         if (error) throw error;
-        return data.map(item => ({ id: item.follower_id, name: item.users?.name || 'Kullanıcı' }));
+        return data.map(item => ({ 
+            id: item.follower_id, 
+            name: item.users?.name || 'Kullanıcı',
+            avatar_url: item.users?.avatar_url || null
+        }));
     },
 
     async getFollowingList(userId) {
@@ -818,11 +874,15 @@ export const api = {
             .from('user_follows')
             .select(`
                 following_id,
-                users!user_follows_following_id_fkey (id, name)
+                users!user_follows_following_id_fkey (id, name, avatar_url)
             `)
             .eq('follower_id', userId);
         if (error) throw error;
-        return data.map(item => ({ id: item.following_id, name: item.users?.name || 'Kullanıcı' }));
+        return data.map(item => ({ 
+            id: item.following_id, 
+            name: item.users?.name || 'Kullanıcı',
+            avatar_url: item.users?.avatar_url || null
+        }));
     },
 
     async checkIsFollowing(targetUserId) {
@@ -908,9 +968,9 @@ export const api = {
         if (!supabase) {
             await utils.delay(500);
             return [
-                { id: '1', type: 'like', is_read: false, created_at: new Date().toISOString(), actor: { name: 'Ahmet', avatar_url: null }, post: { image: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=400' } },
-                { id: '2', type: 'comment', is_read: false, created_at: new Date(Date.now() - 3600000).toISOString(), actor: { name: 'Ayşe', avatar_url: null }, post: { image: 'https://images.unsplash.com/photo-1434389678219-e7414d455447?w=400' } },
-                { id: '3', type: 'follow', is_read: true, created_at: new Date(Date.now() - 86400000).toISOString(), actor: { name: 'Mehmet', avatar_url: null } }
+                { id: '1', type: 'like', is_read: false, created_at: new Date().toISOString(), actor: { id: 'mock-actor-1', name: 'Ahmet', avatar_url: null }, post_id: '1', post: { id: '1', image: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=400' } },
+                { id: '2', type: 'comment', is_read: false, created_at: new Date(Date.now() - 3600000).toISOString(), actor: { id: 'mock-actor-2', name: 'Ayşe', avatar_url: null }, post_id: '2', post: { id: '2', image: 'https://images.unsplash.com/photo-1434389678219-e7414d455447?w=400' } },
+                { id: '3', type: 'follow', is_read: true, created_at: new Date(Date.now() - 86400000).toISOString(), actor: { id: 'mock-actor-3', name: 'Mehmet', avatar_url: null } }
             ];
         }
 
@@ -965,6 +1025,46 @@ export const api = {
         if (error) console.error("Bildirimler okundu olarak işaretlenemedi:", error);
     },
 
+    async markSingleNotificationAsRead(notificationId) {
+        if (!supabase) return;
+        const { error } = await supabase
+            .from('notifications')
+            .update({ is_read: true })
+            .eq('id', notificationId);
+
+        if (error) console.error("Bildirim okundu olarak işaretlenemedi:", error);
+    },
+
+    async getPostById(postId) {
+        if (!supabase) {
+            // Mock data fallback
+            const mockFeed = [
+                { id: '1', user_id: 'mock-id', tag: '#kombin #stil', image: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=400', likes_count: 5 },
+                { id: '2', user_id: 'other-id', tag: '#retro #casual', image: 'https://images.unsplash.com/photo-1434389678219-e7414d455447?w=400', likes_count: 12 }
+            ];
+            return mockFeed.find(p => p.id === postId) || null;
+        }
+
+        const { data, error } = await supabase
+            .from('social_feed')
+            .select('*')
+            .eq('id', postId)
+            .single();
+
+        if (error) {
+            console.error("Post çekilirken hata:", error);
+            return null;
+        }
+
+        if (data) {
+            // Kullanıcı profilini de çek
+            const { data: userData } = await supabase.from('users').select('id, name, avatar_url').eq('id', data.user_id).single();
+            data.users = userData || { name: 'Kullanıcı', avatar_url: null };
+        }
+        return data;
+    },
+
+
     async generateOutfitFromAI(params = {}) {
         if (!supabase) throw new Error("Supabase bağlantısı yok");
         
@@ -1001,6 +1101,164 @@ export const api = {
         }
     },
 
+    // Her kıyafet için Gemini üzerinden dinamik Türk pazarı fiyat tahmini yapar
+    async estimateItemPrices(items, maxBudget = 0) {
+        if (!CONFIG.GEMINI_API_KEY) return {};
+
+        const budgetNote = maxBudget > 0
+            ? `Kullanıcının bütçe üst sınırı ${maxBudget} TL. Fiyatlar bu sınırı geçmemeli.`
+            : 'Bütçe sınırı yok.';
+
+        const itemList = items.map((it, i) => `${i + 1}. "${it.name}" (${it.type})`).join('\n');
+
+        const prompt = `Sen Türk giyim pazarını çok iyi bilen bir fiyatlandırma uzmanısın.
+Aşağıdaki kıyafetlerin her biri için 2025 yılı Türkiye perakende piyasasında orta segmentte (Zara, Mango, LC Waikiki üst segment, Defacto premium gibi mağazalar) gerçekçi TAHMİNİ bir satış fiyatı ver.
+${budgetNote}
+
+Kıyafet listesi:
+${itemList}
+
+Sadece şu JSON formatında yanıt ver, başka hiçbir şey yazma:
+{
+  "prices": [850, 1400, 2800]
+}
+Dizi sırası kıyafet listesiyle aynı olmalı. Değerler TL cinsinden tam sayı olmalı.`;
+
+        try {
+            const response = await fetch(
+                `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${CONFIG.GEMINI_API_KEY}`,
+                {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: prompt }] }],
+                        generationConfig: {
+                            responseMimeType: 'application/json',
+                            responseSchema: {
+                                type: 'OBJECT',
+                                properties: {
+                                    prices: { type: 'ARRAY', items: { type: 'INTEGER' } }
+                                },
+                                required: ['prices']
+                            }
+                        }
+                    })
+                }
+            );
+            if (!response.ok) return {};
+            const data = await response.json();
+            const pricesArr = data.candidates?.[0]?.content?.parts?.[0]?.text
+                ? JSON.parse(data.candidates[0].content.parts[0].text).prices
+                : [];
+            // item adı → fiyat haritası oluştur
+            const map = {};
+            items.forEach((it, i) => { if (pricesArr[i]) map[it.name] = pricesArr[i]; });
+            return map;
+        } catch (e) {
+            console.warn('Fiyat tahmini alınamadı:', e);
+            return {};
+        }
+    },
+
+     async rateOutfit(imageBase64, imageMimeType) {
+        // supabase.functions.invoke yerine direkt fetch kullanıyoruz (daha güvenilir)
+        const SUPABASE_URL = CONFIG.SUPABASE_URL;
+        const SUPABASE_KEY = CONFIG.SUPABASE_KEY;
+        
+        try {
+            // Her resmi sıkıştır - Groq API için max 4MB, biz 1MB hedefliyoruz
+            const imageSizeKB = Math.round((imageBase64.length * 3) / 4 / 1024);
+            console.log(`[RateOutfit] Resim boyutu: ~${imageSizeKB} KB, sıkıştırılıyor...`);
+            
+            let finalBase64 = imageBase64;
+            let finalMimeType = imageMimeType;
+            
+            try {
+                const compressedResult = await this._compressImage(imageBase64, imageMimeType, 1200, 0.8);
+                finalBase64 = compressedResult.base64;
+                finalMimeType = compressedResult.mimeType;
+                const newSizeKB = Math.round((finalBase64.length * 3) / 4 / 1024);
+                console.log(`[RateOutfit] Sıkıştırılmış boyut: ~${newSizeKB} KB`);
+            } catch (compErr) {
+                console.warn('[RateOutfit] Sıkıştırma başarısız, orijinal resim kullanılıyor:', compErr);
+            }
+            
+            console.log('[RateOutfit] Edge Function çağrılıyor (direkt fetch)...');
+            
+            const response = await fetch(`${SUPABASE_URL}/functions/v1/rate-outfit`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'apikey': SUPABASE_KEY,
+                    'Authorization': `Bearer ${SUPABASE_KEY}`
+                },
+                body: JSON.stringify({ imageBase64: finalBase64, imageMimeType: finalMimeType })
+            });
+            
+            const responseText = await response.text();
+            console.log('[RateOutfit] HTTP Status:', response.status);
+            console.log('[RateOutfit] Yanıt:', responseText.substring(0, 500));
+            
+            if (!response.ok) {
+                throw new Error(`Edge Function HTTP ${response.status}: ${responseText}`);
+            }
+            
+            let data;
+            try {
+                data = JSON.parse(responseText);
+            } catch (e) {
+                throw new Error(`Geçersiz JSON yanıtı: ${responseText.substring(0, 200)}`);
+            }
+            
+            if (data && data.error) {
+                console.error('[RateOutfit] API error:', data.error);
+                throw new Error(data.error);
+            }
+            
+            // Yanıtın geçerli olup olmadığını kontrol et
+            if (data && typeof data.score === 'number' && Array.isArray(data.pros)) {
+                console.log('[RateOutfit] ✅ Başarılı! Puan:', data.score);
+                return data;
+            }
+            
+            // Yanıt beklenmeyen formatta
+            console.error('[RateOutfit] Beklenmeyen yanıt formatı:', data);
+            throw new Error("Yapay zekadan beklenmeyen yanıt formatı");
+        } catch (error) {
+            console.error("[RateOutfit] ❌ Hata:", error.message);
+            throw error; // Hatayı yukarıya fırlat - dashboard.js hata yönetimi yapıyor
+        }
+    },
+    
+    // Resmi sıkıştırma yardımcı fonksiyonu
+    async _compressImage(base64Data, mimeType) {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const MAX_DIM = 1024; // Maksimum boyut
+                let { width, height } = img;
+                
+                if (width > MAX_DIM || height > MAX_DIM) {
+                    const ratio = Math.min(MAX_DIM / width, MAX_DIM / height);
+                    width = Math.round(width * ratio);
+                    height = Math.round(height * ratio);
+                }
+                
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                
+                const compressed = canvas.toDataURL('image/jpeg', 0.7);
+                const compressedBase64 = compressed.split(',')[1];
+                resolve({ base64: compressedBase64, mimeType: 'image/jpeg' });
+            };
+            img.onerror = reject;
+            img.src = `data:${mimeType};base64,${base64Data}`;
+        });
+    },
+
     async getImageFromProxy(prompt) {
         if (!supabase) return null;
         
@@ -1023,21 +1281,6 @@ export const api = {
         } catch (err) {
             console.warn('Image proxy çağrı hatası:', err);
             return null;
-        }
-    },
-
-    async getOutfitsCount(userId) {
-        if (!supabase) return 0;
-        try {
-            const { count, error } = await supabase
-                .from('outfits')
-                .select('*', { count: 'exact', head: true })
-                .eq('user_id', userId);
-            if (error) throw error;
-            return count || 0;
-        } catch (err) {
-            console.warn("Outfits count fetch error in api.js:", err);
-            return 0;
         }
     }
 };
